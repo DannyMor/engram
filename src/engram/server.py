@@ -157,6 +157,27 @@ def create_app(
         data["has_api_key"] = api_key is not None
         return data
 
+    # --- Chat (Curation Agent) ---
+
+    from fastapi.responses import StreamingResponse
+
+    from engram.curator import CurationAgent
+    from engram.models import ChatRequest
+
+    @app.post("/api/chat")
+    async def chat(request: ChatRequest):
+        """Stream a curation agent response."""
+        try:
+            agent = CurationAgent(app.state.config, app.state.memory)
+        except ValueError as e:
+            return Response(content=str(e), status_code=503)
+
+        async def stream():
+            async for chunk in agent.chat(request.message, request.history):
+                yield chunk
+
+        return StreamingResponse(stream(), media_type="text/plain")
+
     # --- Static UI ---
 
     @app.get("/", response_class=HTMLResponse)
