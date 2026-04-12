@@ -227,13 +227,16 @@ class CurationAgent:
             tool_results: list[dict[str, Any]] = []
             for tool_block in tool_use_blocks:
                 result = self._execute_tool(tool_block.name, tool_block.input)
+                match result:
+                    case str() as text:
+                        content = text
+                    case dict() | list():
+                        content = json.dumps(result)
                 tool_results.append(
                     {
                         "type": "tool_result",
                         "tool_use_id": tool_block.id,
-                        "content": (
-                            json.dumps(result) if not isinstance(result, str) else result
-                        ),
+                        "content": content,
                     }
                 )
 
@@ -248,46 +251,43 @@ class CurationAgent:
 
     def _execute_tool(self, name: str, args: dict[str, Any]) -> dict | list | str:
         """Dispatch a tool call to the appropriate memory store method."""
-        if name == "add_preference":
-            pref = self._memory.add(
-                PreferenceCreate(
-                    text=args["text"],
-                    scope=args["scope"],
-                    repo=args.get("repo"),
-                    tags=args.get("tags", []),
-                    source=Source.CURATION_AGENT,
+        match name:
+            case "add_preference":
+                pref = self._memory.add(
+                    PreferenceCreate(
+                        text=args["text"],
+                        scope=args["scope"],
+                        repo=args.get("repo"),
+                        tags=args.get("tags", []),
+                        source=Source.CURATION_AGENT,
+                    )
                 )
-            )
-            return pref.model_dump(mode="json")
-
-        if name == "search_preferences":
-            prefs = self._memory.search(
-                query=args["query"],
-                scope=args.get("scope"),
-                repo=args.get("repo"),
-            )
-            return [p.model_dump(mode="json") for p in prefs]
-
-        if name == "list_preferences":
-            prefs = self._memory.get_all(
-                scope=args.get("scope"),
-                repo=args.get("repo"),
-                tags=args.get("tags"),
-            )
-            return [p.model_dump(mode="json") for p in prefs]
-
-        if name == "delete_preference":
-            self._memory.delete(args["preference_id"])
-            return {"status": "deleted", "id": args["preference_id"]}
-
-        if name == "update_preference":
-            pref = self._memory.update(
-                preference_id=args["preference_id"],
-                text=args.get("text"),
-                scope=args.get("scope"),
-                repo=args.get("repo"),
-                tags=args.get("tags"),
-            )
-            return pref.model_dump(mode="json")
-
-        return {"error": f"Unknown tool: {name}"}
+                return pref.model_dump(mode="json")
+            case "search_preferences":
+                prefs = self._memory.search(
+                    query=args["query"],
+                    scope=args.get("scope"),
+                    repo=args.get("repo"),
+                )
+                return [p.model_dump(mode="json") for p in prefs]
+            case "list_preferences":
+                prefs = self._memory.get_all(
+                    scope=args.get("scope"),
+                    repo=args.get("repo"),
+                    tags=args.get("tags"),
+                )
+                return [p.model_dump(mode="json") for p in prefs]
+            case "delete_preference":
+                self._memory.delete(args["preference_id"])
+                return {"status": "deleted", "id": args["preference_id"]}
+            case "update_preference":
+                pref = self._memory.update(
+                    preference_id=args["preference_id"],
+                    text=args.get("text"),
+                    scope=args.get("scope"),
+                    repo=args.get("repo"),
+                    tags=args.get("tags"),
+                )
+                return pref.model_dump(mode="json")
+            case _:
+                return {"error": f"Unknown tool: {name}"}

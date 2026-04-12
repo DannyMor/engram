@@ -11,7 +11,17 @@ from engram.config import load_config, resolve_api_key, save_config
 from engram.injector import format_injection_block
 from engram.logging import setup_logging
 from engram.memory import MemoryStore
-from engram.models import EngramConfig, Preference, PreferenceCreate, PreferenceUpdate
+from engram.models import (
+    ConfigResponse,
+    EmbedderConfigResponse,
+    EngramConfig,
+    HealthResponse,
+    LLMConfigResponse,
+    Preference,
+    PreferenceCreate,
+    PreferenceUpdate,
+    StorageConfigResponse,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -43,51 +53,46 @@ def create_app(
 
     # --- Health ---
 
-    @app.get("/api/health")
-    async def health() -> dict:
-        return {"status": "ok", "version": "0.1.0"}
+    @app.get("/api/health", response_model=HealthResponse)
+    async def health() -> HealthResponse:
+        return HealthResponse(status="ok", version="0.1.0")
 
     # --- Preferences CRUD ---
 
-    @app.get("/api/preferences")
+    @app.get("/api/preferences", response_model=list[Preference])
     async def list_preferences(
         q: str | None = None,
         scope: str | None = None,
         repo: str | None = None,
         tags: str | None = None,
-    ) -> list[dict]:
+    ) -> list[Preference]:
         memory: MemoryStore = app.state.memory
         if q is not None:
-            prefs = memory.search(q, scope=scope, repo=repo)
-        else:
-            tag_list = [t.strip() for t in tags.split(",")] if tags else None
-            prefs = memory.get_all(scope=scope, repo=repo, tags=tag_list)
-        return [p.model_dump(mode="json") for p in prefs]
+            return memory.search(q, scope=scope, repo=repo)
+        tag_list = [t.strip() for t in tags.split(",")] if tags else None
+        return memory.get_all(scope=scope, repo=repo, tags=tag_list)
 
-    @app.post("/api/preferences", status_code=201)
-    async def add_preference(body: PreferenceCreate) -> dict:
+    @app.post("/api/preferences", status_code=201, response_model=Preference)
+    async def add_preference(body: PreferenceCreate) -> Preference:
         memory: MemoryStore = app.state.memory
-        pref = memory.add(body)
-        return pref.model_dump(mode="json")
+        return memory.add(body)
 
-    @app.get("/api/preferences/{preference_id}")
-    async def get_preference(preference_id: str) -> dict:
+    @app.get("/api/preferences/{preference_id}", response_model=Preference)
+    async def get_preference(preference_id: str) -> Preference:
         memory: MemoryStore = app.state.memory
         mem: dict = memory._mem0.get(preference_id) or {}
-        pref = memory._to_preference(mem)
-        return pref.model_dump(mode="json")
+        return memory._to_preference(mem)
 
-    @app.put("/api/preferences/{preference_id}")
-    async def update_preference(preference_id: str, body: PreferenceUpdate) -> dict:
+    @app.put("/api/preferences/{preference_id}", response_model=Preference)
+    async def update_preference(preference_id: str, body: PreferenceUpdate) -> Preference:
         memory: MemoryStore = app.state.memory
-        pref = memory.update(
+        return memory.update(
             preference_id,
             text=body.text,
             scope=body.scope,
             repo=body.repo,
             tags=body.tags,
         )
-        return pref.model_dump(mode="json")
 
     @app.delete("/api/preferences/{preference_id}", status_code=204)
     async def delete_preference(preference_id: str) -> Response:
@@ -131,31 +136,40 @@ def create_app(
 
     # --- Config ---
 
-    @app.get("/api/config")
-    async def get_config() -> dict:
+    @app.get("/api/config", response_model=ConfigResponse)
+    async def get_config() -> ConfigResponse:
         cfg: EngramConfig = app.state.config
         has_key = resolve_api_key(cfg.llm.api_key_env) is not None
-        return {
-            "llm": {
-                "provider": cfg.llm.provider,
-                "model": cfg.llm.model,
-                "has_api_key": has_key,
-            },
-            "embedder": {
-                "provider": cfg.embedder.provider,
-                "model": cfg.embedder.model,
-            },
-            "storage": {"path": cfg.storage.path},
-        }
+        return ConfigResponse(
+            llm=LLMConfigResponse(
+                provider=cfg.llm.provider,
+                model=cfg.llm.model,
+                has_api_key=has_key,
+            ),
+            embedder=EmbedderConfigResponse(
+                provider=cfg.embedder.provider,
+                model=cfg.embedder.model,
+            ),
+            storage=StorageConfigResponse(path=cfg.storage.path),
+        )
 
-    @app.put("/api/config")
-    async def update_config(body: EngramConfig) -> dict:
+    @app.put("/api/config", response_model=ConfigResponse)
+    async def update_config(body: EngramConfig) -> ConfigResponse:
         save_config(body)
         app.state.config = body
-        data = body.model_dump(mode="json")
-        api_key = resolve_api_key(body.llm.api_key_env)
-        data["has_api_key"] = api_key is not None
-        return data
+        has_key = resolve_api_key(body.llm.api_key_env) is not None
+        return ConfigResponse(
+            llm=LLMConfigResponse(
+                provider=body.llm.provider,
+                model=body.llm.model,
+                has_api_key=has_key,
+            ),
+            embedder=EmbedderConfigResponse(
+                provider=body.embedder.provider,
+                model=body.embedder.model,
+            ),
+            storage=StorageConfigResponse(path=body.storage.path),
+        )
 
     # --- Chat (Curation Agent) ---
 

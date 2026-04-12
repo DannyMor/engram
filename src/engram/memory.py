@@ -169,13 +169,13 @@ class MemoryStore:
 
     def _extract_id(self, result: dict | list) -> str:
         """Extract memory ID from Mem0 add() result."""
-        if isinstance(result, dict):
-            results = result.get("results", [])
-            if results:
-                return results[0].get("id", results[0].get("memory_id", ""))
-        if isinstance(result, list) and result:
-            return result[0].get("id", result[0].get("memory_id", ""))
-        return ""
+        match result:
+            case {"results": [first, *_]}:
+                return first.get("id", first.get("memory_id", ""))
+            case [first, *_]:
+                return first.get("id", first.get("memory_id", ""))
+            case _:
+                return ""
 
     def _get_by_id(self, memory_id: str, fallback: PreferenceCreate) -> Preference:
         """Fetch a memory by ID and convert to Preference."""

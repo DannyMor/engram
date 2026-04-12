@@ -84,3 +84,40 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     history: list[ChatMessage] = Field(default_factory=list)
+
+
+# --- API Response Models ---
+
+
+class HealthResponse(BaseModel):
+    status: str
+    version: str
+
+
+class LLMConfigResponse(BaseModel):
+    provider: str
+    model: str
+    has_api_key: bool
+
+
+class EmbedderConfigResponse(BaseModel):
+    provider: str
+    model: str
+
+
+class StorageConfigResponse(BaseModel):
+    path: str
+
+
+class ConfigResponse(BaseModel):
+    llm: LLMConfigResponse
+    embedder: EmbedderConfigResponse
+    storage: StorageConfigResponse
+
+
+class ConfigUpdateResponse(BaseModel):
+    status: str
+
+
+class DeleteResponse(BaseModel):
+    status: str = "deleted"

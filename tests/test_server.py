@@ -6,7 +6,13 @@ from unittest.mock import MagicMock
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from engram.models import Confidence, Preference, Source
+from engram.models import (
+    Confidence,
+    ConfigResponse,
+    HealthResponse,
+    Preference,
+    Source,
+)
 
 needs_api_key = pytest.mark.skipif(
     not os.environ.get("ANTHROPIC_API_KEY"),
@@ -61,16 +67,18 @@ async def client(app):
 async def test_health(client):
     response = await client.get("/api/health")
     assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "ok"
+    health = HealthResponse.model_validate(response.json())
+    assert health.status == "ok"
+    assert health.version == "0.1.0"
 
 
 async def test_list_preferences(client, mock_memory):
     response = await client.get("/api/preferences")
     assert response.status_code == 200
-    data = response.json()
-    assert len(data) == 1
-    assert data[0]["text"] == "Use pytest fixtures"
+    prefs = [Preference.model_validate(p) for p in response.json()]
+    assert len(prefs) == 1
+    assert prefs[0].text == "Use pytest fixtures"
+    assert prefs[0].source == Source.MANUAL
     mock_memory.get_all.assert_called_once()
 
 
@@ -100,8 +108,10 @@ async def test_add_preference(client, mock_memory):
         json={"text": "Use dataclasses", "scope": "python"},
     )
     assert response.status_code == 201
-    data = response.json()
-    assert data["text"] == "Use dataclasses"
+    pref = Preference.model_validate(response.json())
+    assert pref.text == "Use dataclasses"
+    assert pref.scope == "python"
+    assert pref.id == "new-1"
 
 
 async def test_delete_preference(client, mock_memory):
@@ -124,8 +134,10 @@ async def test_update_preference(client, mock_memory):
         json={"text": "Updated text"},
     )
     assert response.status_code == 200
-    data = response.json()
-    assert data["text"] == "Updated text"
+    pref = Preference.model_validate(response.json())
+    assert pref.text == "Updated text"
+    assert pref.id == "test-1"
+    assert pref.scope == "python"
 
 
 async def test_get_scopes(client, mock_memory):
@@ -161,19 +173,23 @@ async def test_get_preference_by_id(client, mock_memory):
     )
     response = await client.get("/api/preferences/test-1")
     assert response.status_code == 200
-    data = response.json()
-    assert data["id"] == "test-1"
-    assert data["text"] == "Use pytest fixtures"
+    pref = Preference.model_validate(response.json())
+    assert pref.id == "test-1"
+    assert pref.text == "Use pytest fixtures"
+    assert pref.scope == "python"
+    assert pref.source == Source.MANUAL
 
 
 async def test_get_config(client):
     response = await client.get("/api/config")
     assert response.status_code == 200
-    data = response.json()
-    assert "llm" in data
-    assert "has_api_key" in data["llm"]
+    config = ConfigResponse.model_validate(response.json())
+    assert config.llm.provider == "anthropic"
+    assert config.embedder.provider == "fastembed"
+    assert config.storage.path == "~/.engram/data"
     # Should NOT contain the actual API key
-    assert "api_key" not in str(data).lower() or "has_api_key" in str(data)
+    raw = response.text
+    assert "ANTHROPIC_API_KEY" not in raw
 
 
 async def test_inject_preferences(client, mock_memory):
