@@ -132,16 +132,23 @@ class MemoryStore:
         """Update an existing preference."""
         existing: dict = self._mem0.get(preference_id) or {}
 
-        if text:
-            self._mem0.update(preference_id, data=text)
-
         current_metadata = existing.get("metadata", {})
+        metadata_changed = False
         if scope is not None:
             current_metadata["scope"] = scope
+            metadata_changed = True
         if repo is not None:
             current_metadata["repo"] = repo
+            metadata_changed = True
         if tags is not None:
             current_metadata["tags"] = tags
+            metadata_changed = True
+
+        if text or metadata_changed:
+            update_kwargs: dict = {"data": text or existing.get("memory", "")}
+            if metadata_changed:
+                update_kwargs["metadata"] = current_metadata
+            self._mem0.update(preference_id, **update_kwargs)
 
         updated: dict = self._mem0.get(preference_id) or {}
         logger.info("Updated preference %s", preference_id)
