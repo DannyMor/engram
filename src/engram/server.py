@@ -8,6 +8,7 @@ from fastapi import FastAPI, Query, Response
 from fastapi.responses import HTMLResponse, PlainTextResponse
 
 from engram.config import load_config, resolve_api_key, save_config
+from engram.injector import format_injection_block
 from engram.logging import setup_logging
 from engram.memory import MemoryStore
 from engram.models import EngramConfig, Preference, PreferenceCreate, PreferenceUpdate
@@ -126,15 +127,7 @@ def create_app(
                     seen_ids.add(p.id)
                     all_prefs.append(p)
 
-        if not all_prefs:
-            return ""
-
-        lines = ["<!-- engram:start -->"]
-        for p in all_prefs:
-            lines.append(f"- [{p.scope}] {p.text}")
-        lines.append("<!-- engram:end -->")
-
-        return "\n".join(lines)
+        return format_injection_block(all_prefs)
 
     # --- Config ---
 
