@@ -32,6 +32,14 @@ def create_app(
     else:
         app.state.memory = MemoryStore(config)
 
+    # --- MCP ---
+    from engram.mcp import create_mcp
+
+    mcp = create_mcp(app.state.memory)
+    mcp_app = mcp.http_app()
+    app.mount("/mcp", mcp_app)
+    logger.info("MCP server mounted at /mcp")
+
     # --- Health ---
 
     @app.get("/api/health")
