@@ -133,10 +133,19 @@ def create_app(
     @app.get("/api/config")
     async def get_config() -> dict:
         cfg: EngramConfig = app.state.config
-        data = cfg.model_dump(mode="json")
-        api_key = resolve_api_key(cfg.llm.api_key_env)
-        data["has_api_key"] = api_key is not None
-        return data
+        has_key = resolve_api_key(cfg.llm.api_key_env) is not None
+        return {
+            "llm": {
+                "provider": cfg.llm.provider,
+                "model": cfg.llm.model,
+                "has_api_key": has_key,
+            },
+            "embedder": {
+                "provider": cfg.embedder.provider,
+                "model": cfg.embedder.model,
+            },
+            "storage": {"path": cfg.storage.path},
+        }
 
     @app.put("/api/config")
     async def update_config(body: EngramConfig) -> dict:
