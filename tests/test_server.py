@@ -200,3 +200,11 @@ async def test_inject_preferences(client, mock_memory):
     assert "<!-- engram:start -->" in text
     assert "<!-- engram:end -->" in text
     assert "Use pytest fixtures" in text
+
+
+async def test_serve_ui(client):
+    response = await client.get("/")
+    assert response.status_code == 200
+    assert "text/html" in response.headers.get("content-type", "")
+    assert "Engram" in response.text
+    assert "alpinejs" in response.text
