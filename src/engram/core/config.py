@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 ENGRAM_HOME = Path.home() / ".engram"
 USER_CONFIG_PATH = ENGRAM_HOME / "config.yaml"
-REPO_CONFIG_PATH = Path(__file__).parent.parent.parent / "config.yaml"
+REPO_CONFIG_PATH = Path(__file__).parent.parent.parent.parent / "config.yaml"
 
 
 def ensure_engram_home() -> None:
