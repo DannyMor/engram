@@ -225,7 +225,7 @@ class Mem0PreferenceStore:
 
     @staticmethod
     def _to_preference(memory: dict[str, Any]) -> Preference:
-        metadata = memory.get("metadata", {})
+        metadata = memory.get("metadata") or {}
         return Preference(
             id=memory.get("id", memory.get("memory_id", "")),
             text=memory.get("memory", ""),
