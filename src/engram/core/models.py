@@ -101,7 +101,7 @@ class StorageConfig(BaseModel):
 
 class ServerConfig(BaseModel):
     host: str = "0.0.0.0"
-    port: int = 3000
+    port: int = 3777
 
 
 class LoggingConfig(BaseModel):
