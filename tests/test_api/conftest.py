@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 from engram.api.app import create_api
-from engram.core.models import AnthropicLLMConfig, EngramConfig
+from engram.core.models import EngramConfig
 from engram.storage.memory import InMemoryPreferenceStore
 from tests.fakes import FakeLLMClient
 

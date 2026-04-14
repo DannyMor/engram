@@ -53,8 +53,13 @@ def test_setup_does_not_overwrite_existing_config(tmp_path):
 
 def test_setup_reports_api_key_status(tmp_path, capsys):
     p_home, p_ucp, p_cfg_home, p_cfg_ucp, _, _ = _patch_home(tmp_path)
-    with p_home, p_ucp, p_cfg_home, p_cfg_ucp, \
-         patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-test"}, clear=False):
+    with (
+        p_home,
+        p_ucp,
+        p_cfg_home,
+        p_cfg_ucp,
+        patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-test"}, clear=False),
+    ):
         run_setup(skip_model_download=True)
 
     captured = capsys.readouterr()

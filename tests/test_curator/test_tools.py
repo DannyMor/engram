@@ -3,7 +3,6 @@
 import pytest
 from pydantic import ValidationError
 
-from engram.core.models import PreferenceCreate, Source
 from engram.curator.tools import (
     AddPreferenceCommand,
     DeletePreferenceCommand,

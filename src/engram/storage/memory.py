@@ -30,8 +30,8 @@ class InMemoryPreferenceStore:
     async def get(self, preference_id: str) -> Preference:
         try:
             return self._prefs[preference_id]
-        except KeyError:
-            raise KeyError(f"Preference not found: {preference_id}")
+        except KeyError as err:
+            raise KeyError(f"Preference not found: {preference_id}") from err
 
     async def search(
         self, query: str, scope: str | None = None, repo: str | None = None

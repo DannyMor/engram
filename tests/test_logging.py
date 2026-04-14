@@ -1,7 +1,6 @@
 """Tests for mode-aware logging setup."""
 
 import logging
-import sys
 
 from engram.core.logging import setup_logging
 

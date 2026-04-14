@@ -5,12 +5,11 @@ from fastapi import APIRouter, Depends
 from engram.api.dependencies import get_config
 from engram.api.models import (
     ConfigResponse,
-    ConfigUpdateRequest,
     EmbedderConfigResponse,
     LLMConfigResponse,
     StorageConfigResponse,
 )
-from engram.core.config import resolve_api_key, save_config
+from engram.core.config import resolve_api_key
 from engram.core.models import AnthropicLLMConfig, EngramConfig
 
 router = APIRouter(tags=["config"])

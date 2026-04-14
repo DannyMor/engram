@@ -20,7 +20,6 @@ from engram.llm.base import (
     LLMClient,
     Message,
     StopEvent,
-    StreamEvent,
     TextDelta,
     ToolDefinition,
     ToolParameter,
@@ -58,9 +57,23 @@ def build_tool_definitions() -> list[ToolDefinition]:
             description="Store a new coding preference.",
             parameters=[
                 ToolParameter(name="text", type="string", description="The preference text"),
-                ToolParameter(name="scope", type="string", description="Language or framework scope"),
-                ToolParameter(name="repo", type="string", description="Repository name", required=False),
-                ToolParameter(name="tags", type="array", description="Categorization tags", required=False),
+                ToolParameter(
+                    name="scope",
+                    type="string",
+                    description="Language or framework scope",
+                ),
+                ToolParameter(
+                    name="repo",
+                    type="string",
+                    description="Repository name",
+                    required=False,
+                ),
+                ToolParameter(
+                    name="tags",
+                    type="array",
+                    description="Categorization tags",
+                    required=False,
+                ),
             ],
         ),
         ToolDefinition(
@@ -68,8 +81,18 @@ def build_tool_definitions() -> list[ToolDefinition]:
             description="Semantic search across preferences.",
             parameters=[
                 ToolParameter(name="query", type="string", description="Search query"),
-                ToolParameter(name="scope", type="string", description="Filter by scope", required=False),
-                ToolParameter(name="repo", type="string", description="Filter by repo", required=False),
+                ToolParameter(
+                    name="scope",
+                    type="string",
+                    description="Filter by scope",
+                    required=False,
+                ),
+                ToolParameter(
+                    name="repo",
+                    type="string",
+                    description="Filter by repo",
+                    required=False,
+                ),
             ],
         ),
         ToolDefinition(
@@ -93,7 +116,12 @@ def build_tool_definitions() -> list[ToolDefinition]:
             name="list_preferences",
             description="List all preferences, optionally filtered by scope.",
             parameters=[
-                ToolParameter(name="scope", type="string", description="Filter by scope", required=False),
+                ToolParameter(
+                    name="scope",
+                    type="string",
+                    description="Filter by scope",
+                    required=False,
+                ),
             ],
         ),
     ]
@@ -106,9 +134,7 @@ class CurationAgent:
         self._llm = llm
         self._store = store
 
-    async def chat(
-        self, message: str, history: list[Message] | None = None
-    ) -> AsyncGenerator[str]:
+    async def chat(self, message: str, history: list[Message] | None = None) -> AsyncGenerator[str]:
         """Stream a curation response, executing tool calls as needed."""
         all_prefs = await self._store.get_all()
         system = build_system_prompt(all_prefs)
@@ -122,9 +148,7 @@ class CurationAgent:
             pending_tool_uses: list[ToolUse] = []
             stop_reason: str = "end_turn"
 
-            async for event in self._llm.stream(
-                messages=messages, system=system, tools=tools
-            ):
+            async for event in self._llm.stream(messages=messages, system=system, tools=tools):
                 match event:
                     case TextDelta(text=text):
                         yield text
@@ -147,11 +171,13 @@ class CurationAgent:
                         content = json.dumps(result, default=str)
                     case None:
                         content = '{"status": "ok"}'
-                tool_result_content.append({
-                    "type": "tool_result",
-                    "tool_use_id": tool_use.id,
-                    "content": content,
-                })
+                tool_result_content.append(
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": tool_use.id,
+                        "content": content,
+                    }
+                )
 
             # Append assistant message with tool uses + tool results
             assistant_blocks = [

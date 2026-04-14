@@ -33,6 +33,7 @@ class ConfigResponse(BaseModel):
 
 class ConfigUpdateRequest(BaseModel):
     """Restricted config update — only safe fields."""
+
     llm_model: str | None = None
     embedder_model: str | None = None
 

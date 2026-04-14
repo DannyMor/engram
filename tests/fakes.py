@@ -2,7 +2,7 @@
 
 from collections.abc import AsyncIterator
 
-from engram.llm.base import LLMClient, Message, StreamEvent, ToolDefinition
+from engram.llm.base import Message, StreamEvent, ToolDefinition
 
 
 class FakeLLMClient:

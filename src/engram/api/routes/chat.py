@@ -1,6 +1,6 @@
 """Chat endpoint — streaming curation agent responses."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 
 from engram.api.dependencies import get_llm_client, get_store

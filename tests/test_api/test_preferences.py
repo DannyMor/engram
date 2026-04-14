@@ -4,11 +4,14 @@ from engram.core.models import Preference, PreferenceCreate
 
 
 async def test_add_preference(client, store) -> None:
-    response = await client.post("/api/preferences", json={
-        "text": "Use type annotations",
-        "scope": "python",
-        "tags": ["typing"],
-    })
+    response = await client.post(
+        "/api/preferences",
+        json={
+            "text": "Use type annotations",
+            "scope": "python",
+            "tags": ["typing"],
+        },
+    )
     assert response.status_code == 201
     pref = Preference.model_validate(response.json())
     assert pref.text == "Use type annotations"

@@ -2,8 +2,8 @@
 
 from engram.core.config import load_config, resolve_api_key, save_config
 from engram.core.models import (
-    AWSAuth,
     AnthropicLLMConfig,
+    AWSAuth,
     BedrockLLMConfig,
     Confidence,
     EmbedderConfig,

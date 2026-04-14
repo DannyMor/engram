@@ -1,7 +1,7 @@
 """Tests for the session injector module."""
 
-from engram.injection.injector import detect_scopes_from_extensions, format_injection_block
 from engram.core.models import Confidence, Preference, Source
+from engram.injection.injector import detect_scopes_from_extensions, format_injection_block
 
 
 def test_format_injection_block_with_prefs():

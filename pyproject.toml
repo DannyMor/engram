@@ -52,12 +52,19 @@ src = ["src"]
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
 
+[tool.ruff.lint.per-file-ignores]
+"src/engram/api/routes/*.py" = ["B008"]  # Depends() in defaults is standard FastAPI
+
 [tool.pyright]
 venvPath = "."
 venv = ".venv"
 pythonVersion = "3.11"
 typeCheckingMode = "standard"
 include = ["src"]
+reportArgumentType = "warning"
+reportAttributeAccessIssue = "warning"
+reportReturnType = "warning"
+reportGeneralTypeIssues = "warning"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

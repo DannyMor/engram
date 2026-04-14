@@ -35,7 +35,9 @@ def integration_config(tmp_path):
             aws_auth=ProfileAuth(
                 profile=os.environ.get("AWS_PROFILE", "default"),
                 region=os.environ.get("AWS_REGION", "us-east-1"),
-            ) if os.environ.get("AWS_PROFILE") else None,
+            )
+            if os.environ.get("AWS_PROFILE")
+            else None,
         ),
         logging=LoggingConfig(level="DEBUG"),
     )
@@ -63,11 +65,14 @@ async def test_full_preference_lifecycle(integration_client):
     health = HealthResponse.model_validate(res.json())
     assert health.status == "ok"
 
-    res = await client.post("/api/preferences", json={
-        "text": "Always use type annotations in function signatures",
-        "scope": "python",
-        "tags": ["typing"],
-    })
+    res = await client.post(
+        "/api/preferences",
+        json={
+            "text": "Always use type annotations in function signatures",
+            "scope": "python",
+            "tags": ["typing"],
+        },
+    )
     assert res.status_code == 201
     pref = Preference.model_validate(res.json())
     assert pref.scope == "python"
@@ -87,9 +92,12 @@ async def test_full_preference_lifecycle(integration_client):
     assert res.status_code == 200
     assert "type annotations" in res.text
 
-    res = await client.put(f"/api/preferences/{pref_id}", json={
-        "text": "Always use type annotations on all public function signatures",
-    })
+    res = await client.put(
+        f"/api/preferences/{pref_id}",
+        json={
+            "text": "Always use type annotations on all public function signatures",
+        },
+    )
     assert res.status_code == 200
     updated = Preference.model_validate(res.json())
     assert "public" in updated.text

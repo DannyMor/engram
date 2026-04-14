@@ -38,8 +38,11 @@ async def get_preference(
 ) -> Preference:
     try:
         return await store.get(preference_id)
-    except KeyError:
-        raise HTTPException(status_code=404, detail=f"Preference not found: {preference_id}")
+    except KeyError as err:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Preference not found: {preference_id}",
+        ) from err
 
 
 @router.put("/{preference_id}", response_model=Preference)
@@ -52,8 +55,11 @@ async def update_preference(
         return await store.update(
             preference_id, text=body.text, scope=body.scope, repo=body.repo, tags=body.tags
         )
-    except KeyError:
-        raise HTTPException(status_code=404, detail=f"Preference not found: {preference_id}")
+    except KeyError as err:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Preference not found: {preference_id}",
+        ) from err
 
 
 @router.delete("/{preference_id}", status_code=204)
@@ -63,6 +69,9 @@ async def delete_preference(
 ) -> Response:
     try:
         await store.delete(preference_id)
-    except KeyError:
-        raise HTTPException(status_code=404, detail=f"Preference not found: {preference_id}")
+    except KeyError as err:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Preference not found: {preference_id}",
+        ) from err
     return Response(status_code=204)

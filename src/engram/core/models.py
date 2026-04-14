@@ -6,7 +6,6 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
 
-
 # --- Enums ---
 
 
@@ -87,7 +86,6 @@ LLMConfig = Annotated[
     AnthropicLLMConfig | BedrockLLMConfig,
     Field(discriminator="provider"),
 ]
-
 
 
 class EmbedderConfig(BaseModel):

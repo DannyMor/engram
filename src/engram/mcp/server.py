@@ -11,6 +11,8 @@ from engram.storage.base import PreferenceStore
 
 logger = logging.getLogger(__name__)
 
+_background_tasks: set[asyncio.Task[None]] = set()
+
 INSTRUCTIONS = (
     "Engram is the user's coding preference memory. When the user gives feedback "
     "about how code should be written — coding style, patterns to use or avoid, "
@@ -53,7 +55,9 @@ def create_mcp(store: PreferenceStore) -> FastMCP:
             tags=tags or [],
             source=Source.CODING_SESSION,
         )
-        asyncio.create_task(_store_with_logging(store, pref))
+        task = asyncio.create_task(_store_with_logging(store, pref))
+        _background_tasks.add(task)
+        task.add_done_callback(_background_tasks.discard)
         return {"status": "accepted", "text": text, "scope": scope}
 
     @mcp.tool()

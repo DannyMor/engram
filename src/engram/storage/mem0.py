@@ -85,9 +85,7 @@ class Mem0PreferenceStore:
         kwargs: dict[str, Any] = {"user_id": USER_ID}
         if filters:
             kwargs["filters"] = filters
-        results: dict[str, Any] = await asyncio.to_thread(
-            self._mem0.search, query, **kwargs
-        )
+        results: dict[str, Any] = await asyncio.to_thread(self._mem0.search, query, **kwargs)
         prefs = [self._to_preference(m) for m in results.get("results", results)]
         logger.info(f"Search query={query} scope={scope} returned {len(prefs)} results")
         return prefs
@@ -98,9 +96,7 @@ class Mem0PreferenceStore:
         repo: str | None = None,
         tags: list[str] | None = None,
     ) -> list[Preference]:
-        all_memories: dict[str, Any] = await asyncio.to_thread(
-            self._mem0.get_all, user_id=USER_ID
-        )
+        all_memories: dict[str, Any] = await asyncio.to_thread(self._mem0.get_all, user_id=USER_ID)
         memories = all_memories.get("results", all_memories)
         prefs = [self._to_preference(m) for m in memories]
         if scope:
@@ -119,9 +115,7 @@ class Mem0PreferenceStore:
         repo: str | None = None,
         tags: list[str] | None = None,
     ) -> Preference:
-        existing: dict[str, Any] | None = await asyncio.to_thread(
-            self._mem0.get, preference_id
-        )
+        existing: dict[str, Any] | None = await asyncio.to_thread(self._mem0.get, preference_id)
         if not existing:
             raise KeyError(f"Preference not found: {preference_id}")
 
@@ -143,9 +137,7 @@ class Mem0PreferenceStore:
                 update_kwargs["metadata"] = current_metadata
             await asyncio.to_thread(self._mem0.update, preference_id, **update_kwargs)
 
-        updated: dict[str, Any] | None = await asyncio.to_thread(
-            self._mem0.get, preference_id
-        )
+        updated: dict[str, Any] | None = await asyncio.to_thread(self._mem0.get, preference_id)
         logger.info(f"Updated preference {preference_id}")
         return self._to_preference(updated or {})
 
@@ -184,9 +176,15 @@ class Mem0PreferenceStore:
                 # accept it — set env var so boto3's chain picks it up.
                 os.environ["AWS_PROFILE"] = p
                 return {"model": model, "aws_region": r} if r else {"model": model}
-            case BedrockLLMConfig(model=model, aws_auth=StaticAuth(
-                access_key_id=k, secret_access_key=s, session_token=t, region=r,
-            )):
+            case BedrockLLMConfig(
+                model=model,
+                aws_auth=StaticAuth(
+                    access_key_id=k,
+                    secret_access_key=s,
+                    session_token=t,
+                    region=r,
+                ),
+            ):
                 return {
                     "model": model,
                     "aws_access_key_id": k,
@@ -239,9 +237,7 @@ class Mem0PreferenceStore:
         )
 
     @staticmethod
-    def _build_filters(
-        scope: str | None = None, repo: str | None = None
-    ) -> dict[str, Any] | None:
+    def _build_filters(scope: str | None = None, repo: str | None = None) -> dict[str, Any] | None:
         conditions: list[dict[str, Any]] = []
         if scope:
             conditions.append({"scope": scope})

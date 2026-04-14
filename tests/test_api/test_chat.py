@@ -12,9 +12,11 @@ from tests.fakes import FakeLLMClient
 
 async def test_chat_streams_response() -> None:
     store = InMemoryPreferenceStore()
-    fake_llm = FakeLLMClient(responses=[
-        [TextDelta(text="Hello!"), StopEvent(reason="end_turn")],
-    ])
+    fake_llm = FakeLLMClient(
+        responses=[
+            [TextDelta(text="Hello!"), StopEvent(reason="end_turn")],
+        ]
+    )
     app = FastAPI()
     app.state.store = store
     app.state.config = EngramConfig()
