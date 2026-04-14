@@ -2,7 +2,6 @@
 
 import os
 import sys
-from pathlib import Path
 
 import yaml
 
@@ -15,8 +14,15 @@ from engram.setup import run_setup
 
 def _load_config_from_path(path: str) -> EngramConfig:
     """Load config from an explicit file path."""
-    with open(path) as f:
-        raw = yaml.safe_load(f) or {}
+    try:
+        with open(path) as f:
+            raw = yaml.safe_load(f) or {}
+    except FileNotFoundError:
+        print(f"Error: Config file not found: {path}", file=sys.stderr)
+        sys.exit(1)
+    except yaml.YAMLError as e:
+        print(f"Error: Invalid YAML in {path}: {e}", file=sys.stderr)
+        sys.exit(1)
     return EngramConfig(**raw)
 
 
@@ -71,6 +77,9 @@ def main() -> None:
         case "stdio":
             config = _load_config_from_path(args.config) if args.config else load_config()
             run_stdio(config)
+        case _:
+            print(f"Unknown command: {args.command}", file=sys.stderr)
+            sys.exit(1)
 
 
 if __name__ == "__main__":
