@@ -1,5 +1,5 @@
-"""Entry point for python -m engram."""
+"""Allow running engram as `python -m engram`."""
 
-from engram.server import main
+from engram.main import main
 
 main()

@@ -1,3 +1,3 @@
-"""Engram — self-curating coding preference memory for Claude Code."""
+"""engram — Self-curating coding preference memory for Claude Code."""
 
 __version__ = "0.1.0"
