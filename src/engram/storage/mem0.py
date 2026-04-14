@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import os
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +16,8 @@ from engram.core.models import (
     EngramConfig,
     Preference,
     PreferenceCreate,
+    ProfileAuth,
+    StaticAuth,
 )
 
 logger = logging.getLogger(__name__)
@@ -174,14 +177,26 @@ class Mem0PreferenceStore:
     @staticmethod
     def _llm_config(config: EngramConfig) -> dict[str, Any]:
         match config.llm:
-            case BedrockLLMConfig(model=model, aws_region=region):
-                return {"model": model, "aws_region": region}
+            case BedrockLLMConfig(model=model, aws_auth=None):
+                return {"model": model}
+            case BedrockLLMConfig(model=model, aws_auth=ProfileAuth(profile=p, region=r)):
+                # Mem0 passes profile_name to boto3.client() which doesn't
+                # accept it — set env var so boto3's chain picks it up.
+                os.environ["AWS_PROFILE"] = p
+                return {"model": model, "aws_region": r} if r else {"model": model}
+            case BedrockLLMConfig(model=model, aws_auth=StaticAuth(
+                access_key_id=k, secret_access_key=s, session_token=t, region=r,
+            )):
+                return {
+                    "model": model,
+                    "aws_access_key_id": k,
+                    "aws_secret_access_key": s,
+                    "aws_session_token": t,
+                    "aws_region": r,
+                }
             case AnthropicLLMConfig(model=model, api_key_env=env):
-                cfg: dict[str, Any] = {"model": model}
                 api_key = resolve_api_key(env)
-                if api_key:
-                    cfg["api_key"] = api_key
-                return cfg
+                return {"model": model, "api_key": api_key} if api_key else {"model": model}
 
     @staticmethod
     def _extract_id(result: dict[str, Any] | list[dict[str, Any]]) -> str:

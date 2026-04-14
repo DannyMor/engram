@@ -60,17 +60,34 @@ class AnthropicLLMConfig(BaseModel):
     api_key_env: str = "ANTHROPIC_API_KEY"
 
 
+class ProfileAuth(BaseModel):
+    type: Literal["profile"] = "profile"
+    profile: str
+    region: str | None = None
+
+
+class StaticAuth(BaseModel):
+    type: Literal["static"] = "static"
+    access_key_id: str
+    secret_access_key: str
+    session_token: str | None = None
+    region: str | None = None
+
+
+AWSAuth = Annotated[ProfileAuth | StaticAuth, Field(discriminator="type")]
+
+
 class BedrockLLMConfig(BaseModel):
     provider: Literal["aws_bedrock"] = "aws_bedrock"
     model: str = "us.anthropic.claude-sonnet-4-20250514-v1:0"
-    aws_region: str
-    aws_profile: str | None = None
+    aws_auth: AWSAuth | None = None
 
 
 LLMConfig = Annotated[
     AnthropicLLMConfig | BedrockLLMConfig,
     Field(discriminator="provider"),
 ]
+
 
 
 class EmbedderConfig(BaseModel):

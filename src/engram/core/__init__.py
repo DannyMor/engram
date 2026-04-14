@@ -2,6 +2,7 @@
 
 from engram.core.config import load_config, resolve_api_key, save_config
 from engram.core.models import (
+    AWSAuth,
     AnthropicLLMConfig,
     BedrockLLMConfig,
     Confidence,
@@ -12,12 +13,15 @@ from engram.core.models import (
     Preference,
     PreferenceCreate,
     PreferenceUpdate,
+    ProfileAuth,
     ServerConfig,
     Source,
+    StaticAuth,
     StorageConfig,
 )
 
 __all__ = [
+    "AWSAuth",
     "AnthropicLLMConfig",
     "BedrockLLMConfig",
     "Confidence",
@@ -28,8 +32,10 @@ __all__ = [
     "Preference",
     "PreferenceCreate",
     "PreferenceUpdate",
+    "ProfileAuth",
     "ServerConfig",
     "Source",
+    "StaticAuth",
     "StorageConfig",
     "load_config",
     "resolve_api_key",

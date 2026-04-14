@@ -13,6 +13,7 @@ from engram.core.models import (
     EngramConfig,
     LoggingConfig,
     Preference,
+    ProfileAuth,
     ServerConfig,
     StorageConfig,
 )
@@ -31,7 +32,10 @@ def integration_config(tmp_path):
         embedder=EmbedderConfig(provider="fastembed", model="BAAI/bge-small-en-v1.5"),
         llm=BedrockLLMConfig(
             model="us.anthropic.claude-sonnet-4-20250514-v1:0",
-            aws_region=os.environ.get("AWS_REGION", "us-east-1"),
+            aws_auth=ProfileAuth(
+                profile=os.environ.get("AWS_PROFILE", "default"),
+                region=os.environ.get("AWS_REGION", "us-east-1"),
+            ) if os.environ.get("AWS_PROFILE") else None,
         ),
         logging=LoggingConfig(level="DEBUG"),
     )
