@@ -9,7 +9,7 @@ from typing_extensions import TypedDict
 
 class Message(TypedDict):
     role: Literal["user", "assistant"]
-    content: str
+    content: str | list[dict[str, Any]]
 
 
 class ToolParameter(BaseModel):
