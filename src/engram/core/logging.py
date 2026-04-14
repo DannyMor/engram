@@ -6,12 +6,25 @@ import sys
 from pathlib import Path
 
 
-def setup_logging(level: str = "INFO", log_dir: Path | None = None) -> None:
-    """Configure logging with console and optional file output."""
+def setup_logging(
+    level: str = "INFO",
+    stdio_mode: bool = False,
+    log_dir: Path | None = None,
+) -> None:
+    """Configure logging with mode-aware console output.
+
+    In stdio mode, console logs go to stderr (stdout is reserved for JSON-RPC).
+    In serve mode, console logs go to stdout (standard behavior).
+    """
     log_format = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
     date_format = "%Y-%m-%d %H:%M:%S"
 
-    handlers: list[logging.Handler] = [logging.StreamHandler(sys.stdout)]
+    # Clear any existing handlers to avoid duplicates
+    root = logging.getLogger()
+    root.handlers.clear()
+
+    stream = sys.stderr if stdio_mode else sys.stdout
+    handlers: list[logging.Handler] = [logging.StreamHandler(stream)]
 
     if log_dir:
         log_dir.mkdir(parents=True, exist_ok=True)
@@ -28,4 +41,5 @@ def setup_logging(level: str = "INFO", log_dir: Path | None = None) -> None:
         format=log_format,
         datefmt=date_format,
         handlers=handlers,
+        force=True,
     )
