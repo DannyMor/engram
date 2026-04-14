@@ -3,6 +3,13 @@
 import argparse
 
 
+def _valid_port(value: str) -> int:
+    port = int(value)
+    if not (1 <= port <= 65535):
+        raise argparse.ArgumentTypeError(f"port must be 1-65535, got {port}")
+    return port
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     """Parse command-line arguments.
 
@@ -17,10 +24,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--config",
-        type=str,
         default=None,
         help="path to config YAML file",
     )
+    parser.set_defaults(host=None, port=None)
 
     subparsers = parser.add_subparsers(dest="command")
 
@@ -28,13 +35,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     serve_parser = subparsers.add_parser("serve", help="run HTTP server with web UI")
     serve_parser.add_argument(
         "--host",
-        type=str,
         default=None,
         help="host to bind to (overrides config)",
     )
     serve_parser.add_argument(
         "--port",
-        type=int,
+        type=_valid_port,
         default=None,
         help="port to bind to (overrides config)",
     )

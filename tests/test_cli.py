@@ -1,5 +1,7 @@
 """Tests for CLI argument parsing."""
 
+import pytest
+
 from engram.cli import parse_args
 
 
@@ -40,3 +42,14 @@ def test_global_config_flag_with_stdio():
     args = parse_args(["--config", "/tmp/test.yaml"])
     assert args.config == "/tmp/test.yaml"
     assert args.command == "stdio"
+
+
+def test_serve_invalid_port_rejected():
+    with pytest.raises(SystemExit):
+        parse_args(["serve", "--port", "0"])
+
+
+def test_setup_has_default_host_port():
+    args = parse_args(["setup"])
+    assert args.host is None
+    assert args.port is None
