@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 ENGRAM_HOME = Path.home() / ".engram"
 USER_CONFIG_PATH = ENGRAM_HOME / "config.yaml"
+# Dev-only: repo root config.yaml. Won't exist after pip install — load_config() handles this.
 REPO_CONFIG_PATH = Path(__file__).parent.parent.parent.parent / "config.yaml"
 
 
