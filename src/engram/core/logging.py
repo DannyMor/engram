@@ -19,10 +19,6 @@ def setup_logging(
     log_format = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
     date_format = "%Y-%m-%d %H:%M:%S"
 
-    # Clear any existing handlers to avoid duplicates
-    root = logging.getLogger()
-    root.handlers.clear()
-
     stream = sys.stderr if stdio_mode else sys.stdout
     handlers: list[logging.Handler] = [logging.StreamHandler(stream)]
 
