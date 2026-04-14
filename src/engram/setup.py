@@ -3,9 +3,7 @@
 import os
 import sys
 
-import yaml
-
-from engram.core.config import ENGRAM_HOME, USER_CONFIG_PATH
+from engram.core.config import ENGRAM_HOME, USER_CONFIG_PATH, ensure_engram_home, save_config
 from engram.core.models import EngramConfig
 
 
@@ -14,17 +12,12 @@ def run_setup(skip_model_download: bool = False) -> None:
     _print("Setting up engram...\n")
 
     # 1. Create directory structure
-    ENGRAM_HOME.mkdir(parents=True, exist_ok=True)
-    (ENGRAM_HOME / "data").mkdir(exist_ok=True)
-    (ENGRAM_HOME / "logs").mkdir(exist_ok=True)
+    ensure_engram_home()
     _print(f"  Created {ENGRAM_HOME}/")
 
     # 2. Create default config if not present
     if not USER_CONFIG_PATH.exists():
-        config = EngramConfig()
-        data = config.model_dump()
-        with open(USER_CONFIG_PATH, "w") as f:
-            yaml.dump(data, f, default_flow_style=False)
+        save_config(EngramConfig())
         _print(f"  Created {USER_CONFIG_PATH}")
     else:
         _print(f"  Config already exists at {USER_CONFIG_PATH}")
@@ -35,7 +28,7 @@ def run_setup(skip_model_download: bool = False) -> None:
         try:
             from fastembed import TextEmbedding
 
-            TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
+            TextEmbedding(model_name=EngramConfig().embedder.model)
             _print("  Model downloaded successfully.")
         except Exception as e:
             _print(f"  Warning: Could not download model: {e}")
