@@ -1,3 +1,6 @@
+# Superpowers brainstorming/planning docs (local only)
+docs/superpowers/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
