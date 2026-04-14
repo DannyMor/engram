@@ -4,7 +4,7 @@ set dotenv-load
 
 # Development
 dev:
-    uv run uvicorn engram.server:app --reload --host 0.0.0.0 --port 3000
+    uv run uvicorn engram.server:app --reload --host 0.0.0.0 --port 3777
 
 # Service management
 start:
@@ -82,7 +82,7 @@ install-hook:
     cat > "$HOOK_SCRIPT" << 'HOOK'
     #!/usr/bin/env bash
     # Engram session injection hook
-    ENGRAM_URL="http://localhost:3000"
+    ENGRAM_URL="http://localhost:3777"
     CLAUDE_MD="$HOME/.claude/CLAUDE.md"
 
     if ! curl -sf "$ENGRAM_URL/api/health" > /dev/null 2>&1; then

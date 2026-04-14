@@ -14,7 +14,7 @@ just setup
 just dev
 
 # Open the web UI
-open http://localhost:3000
+open http://localhost:3777
 ```
 
 ## How It Works
@@ -27,7 +27,7 @@ open http://localhost:3000
 
 ### Prerequisites
 
-- Python 3.14+
+- Python 3.11+
 - [uv](https://docs.astral.sh/uv/)
 - [just](https://just.systems/)
 - An Anthropic API key (set as `ANTHROPIC_API_KEY` environment variable)
@@ -51,7 +51,7 @@ Add to your Claude Code settings:
 {
   "mcpServers": {
     "engram": {
-      "url": "http://localhost:3000/mcp"
+      "url": "http://localhost:3777/mcp"
     }
   }
 }
@@ -88,7 +88,7 @@ storage:
 
 ## Web UI
 
-Open `http://localhost:3000` to:
+Open `http://localhost:3777` to:
 
 - **Browse** preferences with search, scope filtering, and tag filtering
 - **Chat** with the curation agent for bulk cleanup, conflict review, and proactive suggestions
