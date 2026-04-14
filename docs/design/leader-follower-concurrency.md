@@ -16,9 +16,9 @@ Claude Code spawns a new stdio MCP process per session. A developer with two ter
 
 Multiple concurrent `engramd` stdio processes, each serving a separate Claude Code session, all sharing the same preference data. No user configuration required.
 
-## Solution: Port-Based Leader Discovery
+## Solution: Single-Port Leader Election
 
-Instead of lock files, we use the **port itself as the lock mechanism**. The OS guarantees only one process can bind to a port. A well-known port range (`3778-3787`) acts as the discovery mechanism. Health responses include an engram identifier to distinguish our process from unrelated services.
+A single, well-known port (default `3778`, user-configurable) acts as the coordination point. The OS guarantees only one process can bind to a port — this is the lock. No port scanning, no ranges, no ambiguity.
 
 ```
                     Claude Code              Claude Code              Claude Code
@@ -32,6 +32,18 @@ Instead of lock files, we use the **port itself as the lock mechanism**. The OS 
               ~/.engram/    localhost:3778
               data/
 ```
+
+### Why single-port, not a port range
+
+A port range introduces a **split-brain bug**:
+
+1. Port 3778 is occupied by a non-engram process (e.g. a dev server)
+2. Engram tries 3778, fails health check, skips it, becomes leader on 3779
+3. The non-engram process on 3778 dies — port 3778 is now free
+4. A new engram session starts, scans from 3778, finds it free, becomes leader on 3778
+5. **Two leaders exist** (3778 and 3779), each with their own Qdrant — but only one can actually hold the Qdrant lock
+
+A single port makes this impossible. There is exactly one coordination point. You're either the leader on that port, a follower talking to it, or you get a clear error.
 
 ### Why port-based, not file-based
 
@@ -50,31 +62,38 @@ Instead of lock files, we use the **port itself as the lock mechanism**. The OS 
 ```
                      engramd stdio process starts
                                 |
-                    Scan discovery ports 3778-3787
-                    For each port, call GET /health
+                     Try to bind to port 3778
                                 |
-                +-----found engram leader?-----+
-                |                              |
-               yes                             no
-                |                              |
-          Read leader port             Try bind to 3778
-          from health response                 |
-                |                     +----success?----+
-                |                     |                |
-          BECOME FOLLOWER        BECOME LEADER    Try 3779...3787
-                |                     |                |
-          1. Create proxy        1. Open Qdrant   +--success?--+
-             PreferenceStore     2. Start internal |            |
-          2. Start MCP stdio        API on port   yes       FAIL
-             (uses proxy)        3. Start MCP     |      (log error,
-                                    stdio         |       run without
-                                                  |       concurrency)
-                                             BECOME LEADER
+                     +------success?------+
+                     |                    |
+                    yes                   no (address in use)
+                     |                    |
+               BECOME LEADER        Call GET /health
+                     |               on localhost:3778
+                     |                    |
+               1. Open Qdrant    +---is it engram?---+
+               2. Start internal |                   |
+                  API on :3778  yes                  no
+               3. Start MCP      |                   |
+                  stdio      BECOME FOLLOWER    LOG ERROR
+                                 |              "Port 3778 in use
+                           1. Create proxy       by another process.
+                              PreferenceStore    Configure a different
+                           2. Start MCP stdio    port in ~/.engram/
+                              (uses proxy)       config.yaml"
 ```
+
+### Three outcomes — no ambiguity
+
+| Port state | Health check | Result |
+|---|---|---|
+| Free | N/A | Bind it. You're the leader. |
+| Taken | Returns `{"service": "engramd"}` | It's us. You're a follower. |
+| Taken | Anything else (404, timeout, non-engram JSON, connection refused by firewall) | Not us. Error — tell user to change port. |
 
 ### Health Endpoint & Engram Identification
 
-The internal API health endpoint returns an engram-specific response that distinguishes it from any other service that might be running on the same port:
+The leader's internal API health endpoint returns an engram-specific response:
 
 ```
 GET http://localhost:3778/health
@@ -93,35 +112,18 @@ Response (200 OK):
 **Identification rules:**
 1. Response must be valid JSON
 2. `"service"` field must equal `"engramd"` exactly
-3. If either check fails, this port is not an engram leader — skip it
+3. If either check fails → this port is NOT an engram leader → error
 
-This prevents false positives from other services (web servers, databases, dev tools) that might happen to be on one of the discovery ports.
+### Configuration
 
-### Discovery Port Range
+The coordination port is configured in `~/.engram/config.yaml`:
 
-**Ports:** `3778` through `3787` (10 ports)
-
-**Why a range, not a single port:**
-- Another application might occupy port 3778
-- The range gives engram 10 chances to find or become a leader
-- 10 ports is enough — you won't have 10 non-engram services on these exact ports
-
-**Scan order:**
-- Followers scan `3778, 3779, ..., 3787` looking for an existing leader
-- Leaders try to bind starting at `3778`, incrementing on failure
-- Both use the same order, so the first available port wins
-
+```yaml
+coordination:
+  port: 3778  # default
 ```
-    FOLLOWER SCAN                    LEADER BIND
 
-    3778: GET /health                3778: try bind()
-      -> not engram, skip              -> address in use, skip
-    3779: GET /health                3779: try bind()
-      -> connection refused, skip      -> success! LEADER on 3779
-    3780: GET /health
-      -> {"service":"engramd"} !
-      -> found leader on 3780
-```
+This is the **only** configuration needed. If a user has something else on 3778, they change this one value and all engram processes (leader + followers) use the new port.
 
 ### Leader Responsibilities
 
@@ -139,9 +141,8 @@ This prevents false positives from other services (web servers, databases, dev t
                 |
     +-----------+-----------+
     |  Internal HTTP API    |  <-- Followers talk to this
-    |  localhost:{port}     |
-    |  (not externally      |
-    |   accessible)         |
+    |  localhost:3778       |
+    |  (127.0.0.1 only)    |
     |                       |
     |  GET  /health         |  Returns {"service":"engramd", ...}
     |  POST /preferences    |
@@ -172,20 +173,19 @@ The internal API reuses the existing REST route handlers. It binds to `127.0.0.1
         (HTTP client to leader)
                 |
         Calls leader at
-        localhost:{discovered_port}
+        localhost:3778
 ```
 
 The follower creates a `ProxyPreferenceStore` that implements the same `PreferenceStore` interface but makes HTTP calls to the leader. From the MCP layer's perspective, the store is interchangeable — same methods, same return types.
 
 ### Leader Crash Recovery
 
-No special handling needed. When a leader process dies (even `kill -9`):
+When a leader process dies (even `kill -9`):
 
-1. OS immediately releases the port
-2. The port starts returning "connection refused"
-3. Existing followers get connection errors on next request
-4. Next `engramd` process to start scans ports, finds no leader, becomes leader
-5. Existing followers can retry failed requests — if a new leader appeared on the same port, it works transparently
+1. OS immediately releases port 3778
+2. Existing followers get connection errors on next request
+3. Next `engramd` process to start tries to bind 3778 → succeeds → becomes leader
+4. Existing followers retry → new leader is on the same port → works transparently
 
 ```
     Timeline:
@@ -195,44 +195,51 @@ No special handling needed. When a leader process dies (even `kill -9`):
     t=1   Port 3778 is immediately free
     t=2   Follower A tries to call leader -> connection refused
     t=2   Follower A logs warning, returns error to Claude Code
-    t=3   New session starts engramd -> scans ports -> no leader -> becomes leader on :3778
-    t=4   Follower A retries -> succeeds (new leader is up)
+    t=3   New session starts engramd -> bind :3778 succeeds -> becomes leader
+    t=4   Follower A retries -> succeeds (new leader is up on same port)
 ```
+
+Because the port never changes, followers don't need to "rediscover" anything. They just retry the same address.
 
 ### Follower Resilience
 
 When a follower's request to the leader fails:
 
 ```
-    Follower makes request to leader
+    Follower makes request to leader at :3778
                 |
          +---success?---+
          |              |
         yes             no
          |              |
-      Return         Rescan ports 3778-3787
-      result         for engram leader
-                        |
-                 +---found?---+
-                 |            |
-                yes           no
-                 |            |
-           Retry request   Return error
-           to new/same     to Claude Code
-           leader          (it will retry)
+      Return         Check /health on :3778
+      result                |
+                     +---is it engram?---+
+                     |                   |
+                    yes                  no / refused
+                     |                   |
+               Retry request       Return error
+               (transient failure) to Claude Code
+                                   (leader is down,
+                                    it will recover
+                                    when a new session
+                                    starts)
 ```
+
+No rescanning needed. The port is fixed — either the leader is there or it isn't.
 
 ## File Changes
 
 ### New files:
-- `src/engram/concurrency/discovery.py` — Port scanning, health probing, engram identification
-- `src/engram/concurrency/leader.py` — Internal API server startup on discovery port
+- `src/engram/concurrency/discovery.py` — Port probe, health check, engram identification
+- `src/engram/concurrency/leader.py` — Internal API server startup on coordination port
 - `src/engram/concurrency/proxy.py` — `ProxyPreferenceStore` (HTTP client implementing `PreferenceStore`)
 - `tests/test_concurrency/` — Tests for discovery, leader, proxy, resilience
 
 ### Modified files:
 - `src/engram/main.py` — `run_stdio()` uses discovery to decide leader vs follower
-- `src/engram/api/routes/health.py` — Add `service: "engramd"` to health response (internal API uses extended version)
+- `src/engram/core/models.py` — Add `coordination.port` to config model
+- `src/engram/api/routes/health.py` — Add `service: "engramd"` to health response
 
 ### Untouched:
 - MCP tool definitions
@@ -246,27 +253,26 @@ When a follower's request to the leader fails:
 
 | Scenario | Behavior |
 |---|---|
-| Leader crashes (kill -9, power loss) | Port freed by OS instantly. Next process becomes leader. No stale state. |
-| Two processes start simultaneously | OS guarantees only one can bind to a port. Loser gets "address in use", scans for the winner, becomes follower. |
-| Non-engram app on port 3778 | Health probe returns non-engram response (no `"service": "engramd"`). Skip port, try 3779. |
-| All 10 discovery ports occupied by other apps | Fail gracefully with clear error: "Could not find or become leader on ports 3778-3787". Run in solo mode (direct Qdrant, no concurrency). |
-| All sessions close, new one starts | No leader found during scan. Bind to 3778. Become leader. Normal path. |
-| `engramd serve` running + stdio session | Serve mode on port 3777 doesn't conflict with internal API on 3778+. But both try to open Qdrant. Serve mode should participate in the protocol in the future. For now: document that `engramd serve` and stdio can't run simultaneously. |
-| Follower outlives leader | Follower detects connection error, rescans. If no new leader, follower could promote itself (try binding). |
-| 11+ concurrent sessions | Only 10 discovery ports. 11th process can't find a free port to be leader, but it can still be a follower to an existing leader. Only a problem if somehow 10 non-engram services occupy all ports AND no leader exists. Extremely unlikely. |
+| Leader crashes (kill -9, power loss) | Port freed by OS instantly. Next process becomes leader on the same port. No stale state. |
+| Two processes start simultaneously | OS guarantees only one can bind. Loser gets "address in use", checks health, finds the winner, becomes follower. |
+| Non-engram app on port 3778 | Health check returns non-engram response. Clear error: "Port 3778 is in use by another process. Set a different port in ~/.engram/config.yaml". |
+| All sessions close, new one starts | Port 3778 is free. Bind succeeds. Become leader. Normal path. |
+| `engramd serve` running + stdio session | Serve mode on port 3777 doesn't conflict with coordination port 3778. But both try to open Qdrant. Serve mode should participate in the protocol in the future. For now: document that `engramd serve` and stdio can't run simultaneously. |
+| Follower outlives leader | Follower gets connection errors. Returns error to Claude Code. Next new session will become leader, and follower's retries will succeed. |
+| User changes coordination port | All processes (leader + followers) read from same config. Change takes effect on next process start. Existing processes continue on old port until restarted. |
 
 ## Constraints
 
 - Internal API binds to `127.0.0.1` only — never externally accessible
-- Discovery port range `3778-3787` is configurable via `~/.engram/config.yaml` for edge cases
+- Coordination port configurable via `~/.engram/config.yaml` (`coordination.port`, default `3778`)
 - Follower adds ~1-2ms latency per preference operation (localhost HTTP round trip) — negligible
 - No data migration or schema changes needed — the data layer is unchanged
 - Works on macOS, Linux, and Windows (no POSIX-specific file locking)
 
 ## Testing Strategy
 
-1. **Unit tests:** Port scanning with mocked HTTP responses, engram identification logic, proxy store HTTP calls
+1. **Unit tests:** Health probe with mocked responses, engram identification logic, proxy store HTTP calls
 2. **Integration tests:** Start two processes, verify first becomes leader and second becomes follower, both serve MCP tools correctly
 3. **Crash recovery tests:** Start leader + follower, kill leader, verify follower detects failure, start new process as leader, verify follower reconnects
-4. **False positive tests:** Start a non-engram HTTP server on 3778, verify engram skips it and uses 3779
+4. **Port conflict tests:** Start a non-engram HTTP server on 3778, verify engram logs clear error message
 5. **Manual test:** Open two Claude Code sessions with `uvx engramd`, add preferences from both, verify they share data
