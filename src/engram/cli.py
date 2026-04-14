@@ -1,0 +1,51 @@
+"""CLI argument parser for engram."""
+
+import argparse
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    """Parse command-line arguments.
+
+    Commands:
+        (none)  — stdio MCP server (default, for Claude Code)
+        serve   — HTTP server with web UI
+        setup   — first-run setup
+    """
+    parser = argparse.ArgumentParser(
+        prog="engram",
+        description="Self-curating coding preference memory for Claude Code",
+    )
+    parser.add_argument(
+        "--config",
+        type=str,
+        default=None,
+        help="path to config YAML file",
+    )
+
+    subparsers = parser.add_subparsers(dest="command")
+
+    # serve subcommand
+    serve_parser = subparsers.add_parser("serve", help="run HTTP server with web UI")
+    serve_parser.add_argument(
+        "--host",
+        type=str,
+        default=None,
+        help="host to bind to (overrides config)",
+    )
+    serve_parser.add_argument(
+        "--port",
+        type=int,
+        default=None,
+        help="port to bind to (overrides config)",
+    )
+
+    # setup subcommand
+    subparsers.add_parser("setup", help="first-run setup: config, model download, validation")
+
+    args = parser.parse_args(argv)
+
+    # Default to stdio when no subcommand given
+    if args.command is None:
+        args.command = "stdio"
+
+    return args
