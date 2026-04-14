@@ -45,7 +45,7 @@ def run_setup(skip_model_download: bool = False) -> None:
     # 5. Print next steps
     _print("\nSetup complete! Next steps:\n")
     _print("  # Register with Claude Code:")
-    _print("  claude mcp add engram -- uvx engram-ai\n")
+    _print("  claude mcp add engram -- uvx engramd\n")
     _print("  # Or start the web UI:")
     _print("  engram serve\n")
 

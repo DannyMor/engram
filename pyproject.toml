@@ -1,5 +1,5 @@
 [project]
-name = "engram-ai"
+name = "engramd"
 version = "0.1.0"
 description = "Self-curating coding preference memory for Claude Code"
 readme = "README.md"
