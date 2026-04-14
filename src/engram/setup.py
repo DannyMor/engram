@@ -47,7 +47,7 @@ def run_setup(skip_model_download: bool = False) -> None:
     _print("  # Register with Claude Code:")
     _print("  claude mcp add engram -- uvx engramd\n")
     _print("  # Or start the web UI:")
-    _print("  engram serve\n")
+    _print("  engramd serve\n")
 
 
 def _print(msg: str) -> None:

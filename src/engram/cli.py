@@ -19,7 +19,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         setup   — first-run setup
     """
     parser = argparse.ArgumentParser(
-        prog="engram",
+        prog="engramd",
         description="Self-curating coding preference memory for Claude Code",
     )
     parser.add_argument(

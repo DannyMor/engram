@@ -42,7 +42,7 @@ Homepage = "https://github.com/DannyMor/engram"
 Repository = "https://github.com/DannyMor/engram"
 
 [project.scripts]
-engram = "engram.main:main"
+engramd = "engram.main:main"
 
 [tool.ruff]
 target-version = "py311"
