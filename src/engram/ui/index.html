@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Engram</title>
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js" defer></script>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -28,6 +29,10 @@
     </script>
     <style>
         [x-cloak] { display: none !important; }
+        * { scrollbar-width: thin; scrollbar-color: #c1c1c1 transparent; }
+        *::-webkit-scrollbar { width: 6px; }
+        *::-webkit-scrollbar-track { background: transparent; }
+        *::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-900 min-h-screen" x-data="engram()" x-init="init()">
@@ -167,7 +172,18 @@
             </div>
             <template x-for="(msg, i) in chatHistory" :key="i">
                 <div :class="msg.role === 'user' ? 'flex justify-end' : 'flex justify-start'">
-                    <div :class="msg.role === 'user' ? 'bg-engram-600 text-white' : 'bg-white border border-gray-200'" class="max-w-[80%] rounded-lg px-4 py-3 text-sm whitespace-pre-wrap" x-text="msg.content"></div>
+                    <div class="relative group max-w-[80%]">
+                        <template x-if="msg.role === 'user'">
+                            <div class="bg-engram-600 text-white rounded-lg px-4 py-3 text-sm whitespace-pre-wrap" x-text="msg.content"></div>
+                        </template>
+                        <template x-if="msg.role === 'assistant'">
+                            <div class="bg-white border border-gray-200 rounded-lg px-4 py-3 text-sm prose prose-sm prose-gray" x-html="marked.parse(msg.content)"></div>
+                        </template>
+                        <button @click="navigator.clipboard.writeText(msg.content); copiedIdx = i; setTimeout(() => copiedIdx = null, 1500)" class="absolute top-2 right-2 p-1 rounded bg-gray-100/80 text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity" :title="copiedIdx === i ? 'Copied!' : 'Copy'">
+                            <template x-if="copiedIdx !== i"><i data-lucide="copy" class="w-3.5 h-3.5"></i></template>
+                            <template x-if="copiedIdx === i"><i data-lucide="check" class="w-3.5 h-3.5 text-green-500"></i></template>
+                        </button>
+                    </div>
                 </div>
             </template>
             <div x-show="chatLoading" class="flex justify-start">
@@ -180,9 +196,9 @@
                 </div>
             </div>
         </div>
-        <div class="flex gap-3">
-            <input type="text" x-model="chatInput" @keydown.enter="sendChat()" placeholder="Ask the curation agent..." class="flex-1 border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-engram-500 focus:border-transparent" :disabled="chatLoading">
-            <button @click="sendChat()" :disabled="chatLoading || !chatInput.trim()" class="bg-engram-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-engram-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Send</button>
+        <div class="flex items-end gap-3">
+            <textarea x-model="chatInput" @keydown.enter="if (!$event.shiftKey) { $event.preventDefault(); sendChat(); }" placeholder="Ask the curation agent..." rows="1" style="max-height: 120px" class="flex-1 border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-engram-500 focus:border-transparent resize-none overflow-y-auto" :disabled="chatLoading" x-ref="chatTextarea" @input="$refs.chatTextarea.style.height = 'auto'; $refs.chatTextarea.style.height = Math.min($refs.chatTextarea.scrollHeight, 120) + 'px'"></textarea>
+            <button @click="sendChat()" :disabled="chatLoading || !chatInput.trim()" class="bg-engram-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-engram-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0">Send</button>
         </div>
     </div>
 
@@ -269,6 +285,7 @@
                 chatHistory: [],
                 chatInput: '',
                 chatLoading: false,
+                copiedIdx: null,
                 settings: { llm: {}, embedder: {}, storage: {} },
                 stats: { preferences: 0, scopes: 0, tags: 0 },
 
@@ -373,6 +390,7 @@
                     if (!this.chatInput.trim() || this.chatLoading) return;
                     const message = this.chatInput;
                     this.chatInput = '';
+                    this.$nextTick(() => { if (this.$refs.chatTextarea) this.$refs.chatTextarea.style.height = 'auto'; });
                     this.chatHistory.push({ role: 'user', content: message });
                     this.chatLoading = true;
 
@@ -398,6 +416,7 @@
 
                     this.chatLoading = false;
                     this.$nextTick(() => {
+                        lucide.createIcons();
                         const el = document.getElementById('chat-messages');
                         if (el) el.scrollTop = el.scrollHeight;
                     });
