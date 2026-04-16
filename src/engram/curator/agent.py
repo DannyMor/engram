@@ -136,7 +136,13 @@ class CurationAgent:
 
     async def chat(self, message: str, history: list[Message] | None = None) -> AsyncGenerator[str]:
         """Stream a curation response, executing tool calls as needed."""
-        all_prefs = await self._store.get_all()
+        try:
+            all_prefs = await self._store.get_all()
+        except Exception:
+            logger.exception("Failed to load preferences")
+            yield "\n\nError: Could not load preferences."
+            return
+
         system = build_system_prompt(all_prefs)
         tools = build_tool_definitions()
 
@@ -148,14 +154,21 @@ class CurationAgent:
             pending_tool_uses: list[ToolUse] = []
             stop_reason: str = "end_turn"
 
-            async for event in self._llm.stream(messages=messages, system=system, tools=tools):
-                match event:
-                    case TextDelta(text=text):
-                        yield text
-                    case ToolUse() as tool_use:
-                        pending_tool_uses.append(tool_use)
-                    case StopEvent(reason=reason):
-                        stop_reason = reason
+            try:
+                async for event in self._llm.stream(
+                    messages=messages, system=system, tools=tools
+                ):
+                    match event:
+                        case TextDelta(text=text):
+                            yield text
+                        case ToolUse() as tool_use:
+                            pending_tool_uses.append(tool_use)
+                        case StopEvent(reason=reason):
+                            stop_reason = reason
+            except Exception:
+                logger.exception("LLM streaming failed")
+                yield "\n\nError: LLM request failed. Check your API key or provider config."
+                return
 
             if stop_reason != "tool_use" or not pending_tool_uses:
                 return
@@ -163,7 +176,11 @@ class CurationAgent:
             # Execute tool calls and build tool results
             tool_result_content: list[dict[str, Any]] = []
             for tool_use in pending_tool_uses:
-                result = await self._execute_tool(tool_use.name, tool_use.arguments)
+                try:
+                    result = await self._execute_tool(tool_use.name, tool_use.arguments)
+                except Exception:
+                    logger.exception("Tool execution failed: %s", tool_use.name)
+                    result = {"error": f"Tool '{tool_use.name}' failed unexpectedly"}
                 match result:
                     case str() as text:
                         content = text
