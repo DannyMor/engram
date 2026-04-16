@@ -15,5 +15,5 @@ async def get_config(request: Request) -> EngramConfig:
     return request.app.state.config
 
 
-async def get_llm_client(request: Request) -> LLMClient:
+async def get_llm_client(request: Request) -> LLMClient | None:
     return request.app.state.llm_client
