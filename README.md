@@ -1,8 +1,8 @@
 # Engram
 
-Self-curating coding preference memory for Claude Code.
+Self-consolidating coding imprint memory for Claude Code.
 
-Engram learns your coding preferences passively during Claude Code sessions, stores them with semantic deduplication, and automatically injects relevant preferences into future sessions — scoped to the language, framework, and repository you're working in.
+Engram learns your coding imprints passively during Claude Code sessions, stores them with semantic deduplication, and automatically injects relevant imprints into future sessions — scoped to the language, framework, and repository you're working in.
 
 ## Quick Start
 
@@ -20,8 +20,8 @@ open http://localhost:3777
 ## How It Works
 
 1. **During coding sessions** — when you give feedback like "don't mock the database" or "use frozen dataclasses", Claude Code stores it via the engram MCP server
-2. **Between sessions** — engram deduplicates, resolves conflicts, and organizes preferences using semantic search and LLM-driven analysis
-3. **At session start** — a Claude Code hook injects relevant preferences into your CLAUDE.md, scoped to the project's languages and repo
+2. **Between sessions** — engram deduplicates, resolves conflicts, and consolidates imprints using semantic search and LLM-driven analysis
+3. **At session start** — a Claude Code hook injects relevant imprints into your CLAUDE.md, scoped to the project's languages and repo
 
 ## Setup
 
@@ -90,8 +90,8 @@ storage:
 
 Open `http://localhost:3777` to:
 
-- **Browse** preferences with search, scope filtering, and tag filtering
-- **Chat** with the curation agent for bulk cleanup, conflict review, and proactive suggestions
+- **Browse** imprints with search, scope filtering, and tag filtering
+- **Chat** with the collector agent for bulk cleanup, conflict review, and proactive suggestions
 - **Configure** LLM provider and model settings
 
 ## Architecture

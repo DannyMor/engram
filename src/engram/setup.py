@@ -40,7 +40,7 @@ def run_setup(skip_model_download: bool = False) -> None:
         _print("  ANTHROPIC_API_KEY is set.")
     else:
         _print("  ANTHROPIC_API_KEY is not set.")
-        _print("  (Optional — needed for curation agent. Basic CRUD works without it.)")
+        _print("  (Optional — needed for collector agent. Basic CRUD works without it.)")
 
     # 5. Print next steps
     _print("\nSetup complete! Next steps:\n")
