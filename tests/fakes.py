@@ -11,7 +11,7 @@ class FakeLLMClient:
     Usage:
         fake = FakeLLMClient(responses=[
             [TextDelta(text="Hello"), StopEvent(reason="end_turn")],
-            [ToolUse(id="1", name="add_preference", arguments={...})],
+            [ToolUse(id="1", name="add_imprint", arguments={...})],
         ])
     Each call to stream() pops the next response from the list.
     """

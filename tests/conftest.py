@@ -3,12 +3,12 @@
 import pytest
 
 from engram.core.models import EngramConfig
-from engram.storage.memory import InMemoryPreferenceStore
+from engram.storage.memory import InMemoryImprintStore
 
 
 @pytest.fixture
-def store() -> InMemoryPreferenceStore:
-    return InMemoryPreferenceStore()
+def store() -> InMemoryImprintStore:
+    return InMemoryImprintStore()
 
 
 @pytest.fixture

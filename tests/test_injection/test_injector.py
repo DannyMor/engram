@@ -1,19 +1,19 @@
 """Tests for the session injector module."""
 
-from engram.core.models import Confidence, Preference, Source
+from engram.core.models import Confidence, Imprint, Source
 from engram.injection.injector import detect_scopes_from_extensions, format_injection_block
 
 
-def test_format_injection_block_with_prefs():
-    prefs = [
-        Preference(
+def test_format_injection_block_with_imprints():
+    imprints = [
+        Imprint(
             id="1",
             text="Use pytest fixtures",
             scope="python",
             source=Source.MANUAL,
             confidence=Confidence.HIGH,
         ),
-        Preference(
+        Imprint(
             id="2",
             text="Prefer frozen dataclasses",
             scope="python",
@@ -21,7 +21,7 @@ def test_format_injection_block_with_prefs():
             confidence=Confidence.HIGH,
         ),
     ]
-    block = format_injection_block(prefs)
+    block = format_injection_block(imprints)
     assert "<!-- engram:start -->" in block
     assert "<!-- engram:end -->" in block
     assert "- Use pytest fixtures" in block
