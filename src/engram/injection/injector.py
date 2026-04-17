@@ -1,6 +1,6 @@
 """Session injector: scope detection and CLAUDE.md block formatting."""
 
-from engram.core.models import Preference
+from engram.core.models import Imprint
 
 EXTENSION_TO_SCOPE: dict[str, str] = {
     ".py": "python",
@@ -27,7 +27,7 @@ def detect_scopes_from_extensions(
     extensions: set[str],
     has_test_files: bool = False,
 ) -> list[str]:
-    """Map file extensions to preference scopes.
+    """Map file extensions to imprint scopes.
 
     Always includes "global". If *has_test_files* is True the "testing"
     scope is added as well.  Returns a sorted list of unique scope names.
@@ -42,21 +42,21 @@ def detect_scopes_from_extensions(
     return sorted(scopes)
 
 
-def format_injection_block(prefs: list[Preference]) -> str:
-    """Format preferences as a CLAUDE.md managed block.
+def format_injection_block(imprints: list[Imprint]) -> str:
+    """Format imprints as a CLAUDE.md managed block.
 
-    Returns an empty string when *prefs* is empty.
+    Returns an empty string when *imprints* is empty.
     """
-    if not prefs:
+    if not imprints:
         return ""
 
     lines = [
         "<!-- engram:start -->",
-        "## Coding Preferences (managed by engram)",
+        "## Coding Imprints (managed by engram)",
         "",
     ]
-    for p in prefs:
-        lines.append(f"- {p.text}")
+    for i in imprints:
+        lines.append(f"- {i.text}")
     lines.append("<!-- engram:end -->")
 
     return "\n".join(lines)
