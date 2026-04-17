@@ -32,9 +32,9 @@ def run_stdio(config: EngramConfig) -> None:
     setup_logging(level=config.logging.level, stdio_mode=True, log_dir=log_dir)
 
     from engram.mcp import create_mcp
-    from engram.storage.mem0 import Mem0PreferenceStore
+    from engram.storage.mem0 import Mem0ImprintStore
 
-    store = Mem0PreferenceStore(config)
+    store = Mem0ImprintStore(config)
     mcp = create_mcp(store)
     mcp.run(transport="stdio", show_banner=False)
 

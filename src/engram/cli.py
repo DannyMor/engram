@@ -20,7 +20,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     """
     parser = argparse.ArgumentParser(
         prog="engramd",
-        description="Self-curating coding preference memory for Claude Code",
+        description="Self-consolidating coding imprint memory for Claude Code",
     )
     parser.add_argument(
         "--config",

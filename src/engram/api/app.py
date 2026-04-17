@@ -5,13 +5,13 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 
-from engram.api.routes import chat, config, health, injection, preferences, scopes
+from engram.api.routes import chat, config, health, imprints, injection, scopes
 
 
 def create_api(app: FastAPI) -> None:
     """Mount all API routers onto the FastAPI app."""
     app.include_router(health.router)
-    app.include_router(preferences.router)
+    app.include_router(imprints.router)
     app.include_router(scopes.router)
     app.include_router(injection.router)
     app.include_router(config.router)

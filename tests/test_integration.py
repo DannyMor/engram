@@ -11,8 +11,8 @@ from engram.core.models import (
     BedrockLLMConfig,
     EmbedderConfig,
     EngramConfig,
+    Imprint,
     LoggingConfig,
-    Preference,
     ProfileAuth,
     ServerConfig,
     StorageConfig,
@@ -56,7 +56,7 @@ async def integration_client(integration_app):
 
 
 @needs_credentials
-async def test_full_preference_lifecycle(integration_client):
+async def test_full_imprint_lifecycle(integration_client):
     """Test add -> list -> search -> update -> inject -> delete."""
     client = integration_client
 
@@ -66,7 +66,7 @@ async def test_full_preference_lifecycle(integration_client):
     assert health.status == "ok"
 
     res = await client.post(
-        "/api/preferences",
+        "/api/imprints",
         json={
             "text": "Always use type annotations in function signatures",
             "scope": "python",
@@ -74,18 +74,18 @@ async def test_full_preference_lifecycle(integration_client):
         },
     )
     assert res.status_code == 201
-    pref = Preference.model_validate(res.json())
-    assert pref.scope == "python"
-    pref_id = pref.id
+    imprint = Imprint.model_validate(res.json())
+    assert imprint.scope == "python"
+    imprint_id = imprint.id
 
-    res = await client.get("/api/preferences?scope=python")
+    res = await client.get("/api/imprints?scope=python")
     assert res.status_code == 200
-    prefs = [Preference.model_validate(p) for p in res.json()]
-    assert len(prefs) >= 1
+    imprints = [Imprint.model_validate(i) for i in res.json()]
+    assert len(imprints) >= 1
 
-    res = await client.get("/api/preferences?q=type annotations")
+    res = await client.get("/api/imprints?q=type annotations")
     assert res.status_code == 200
-    results = [Preference.model_validate(p) for p in res.json()]
+    results = [Imprint.model_validate(i) for i in res.json()]
     assert len(results) >= 1
 
     res = await client.get("/api/inject?scopes=python,global")
@@ -93,21 +93,21 @@ async def test_full_preference_lifecycle(integration_client):
     assert "type annotations" in res.text
 
     res = await client.put(
-        f"/api/preferences/{pref_id}",
+        f"/api/imprints/{imprint_id}",
         json={
             "text": "Always use type annotations on all public function signatures",
         },
     )
     assert res.status_code == 200
-    updated = Preference.model_validate(res.json())
+    updated = Imprint.model_validate(res.json())
     assert "public" in updated.text
 
-    res = await client.delete(f"/api/preferences/{pref_id}")
+    res = await client.delete(f"/api/imprints/{imprint_id}")
     assert res.status_code == 204
 
-    res = await client.get("/api/preferences?scope=python")
-    ids = [p["id"] for p in res.json()]
-    assert pref_id not in ids
+    res = await client.get("/api/imprints?scope=python")
+    ids = [i["id"] for i in res.json()]
+    assert imprint_id not in ids
 
 
 @needs_credentials

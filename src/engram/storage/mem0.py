@@ -1,4 +1,4 @@
-"""Mem0-backed preference store — wraps Mem0+Qdrant with async interface."""
+"""Mem0-backed imprint store — wraps Mem0+Qdrant with async interface."""
 
 import asyncio
 import logging
@@ -14,8 +14,8 @@ from engram.core.models import (
     BedrockLLMConfig,
     Confidence,
     EngramConfig,
-    Preference,
-    PreferenceCreate,
+    Imprint,
+    ImprintCreate,
     ProfileAuth,
     StaticAuth,
 )
@@ -25,8 +25,8 @@ logger = logging.getLogger(__name__)
 USER_ID = "engram_user"
 
 
-class Mem0PreferenceStore:
-    """Production PreferenceStore backed by Mem0 + embedded Qdrant."""
+class Mem0ImprintStore:
+    """Production ImprintStore backed by Mem0 + embedded Qdrant."""
 
     def __init__(self, config: EngramConfig) -> None:
         storage_path = Path(config.storage.path).expanduser()
@@ -55,69 +55,69 @@ class Mem0PreferenceStore:
         }
 
         self._mem0 = Memory.from_config(mem0_config)
-        logger.info(f"Mem0PreferenceStore initialized with storage at {storage_path}")
+        logger.info(f"Mem0ImprintStore initialized with storage at {storage_path}")
 
-    async def add(self, pref: PreferenceCreate) -> Preference:
+    async def add(self, imprint: ImprintCreate) -> Imprint:
         metadata: dict[str, Any] = {
-            "scope": pref.scope,
-            "repo": pref.repo,
-            "tags": pref.tags,
-            "source": pref.source.value,
+            "scope": imprint.scope,
+            "repo": imprint.repo,
+            "tags": imprint.tags,
+            "source": imprint.source.value,
             "confidence": Confidence.HIGH.value,
         }
         result = await asyncio.to_thread(
-            self._mem0.add, pref.text, user_id=USER_ID, metadata=metadata
+            self._mem0.add, imprint.text, user_id=USER_ID, metadata=metadata
         )
         memory_id = self._extract_id(result)
-        logger.info(f"Added preference (scope={pref.scope}): {pref.text[:80]}")
-        return await self._get_by_id(memory_id, pref)
+        logger.info(f"Added imprint (scope={imprint.scope}): {imprint.text[:80]}")
+        return await self._get_by_id(memory_id, imprint)
 
-    async def get(self, preference_id: str) -> Preference:
-        mem: dict[str, Any] | None = await asyncio.to_thread(self._mem0.get, preference_id)
+    async def get(self, imprint_id: str) -> Imprint:
+        mem: dict[str, Any] | None = await asyncio.to_thread(self._mem0.get, imprint_id)
         if not mem:
-            raise KeyError(f"Preference not found: {preference_id}")
-        return self._to_preference(mem)
+            raise KeyError(f"Imprint not found: {imprint_id}")
+        return self._to_imprint(mem)
 
     async def search(
         self, query: str, scope: str | None = None, repo: str | None = None
-    ) -> list[Preference]:
+    ) -> list[Imprint]:
         filters = self._build_filters(scope=scope, repo=repo)
         kwargs: dict[str, Any] = {"user_id": USER_ID}
         if filters:
             kwargs["filters"] = filters
         results: dict[str, Any] = await asyncio.to_thread(self._mem0.search, query, **kwargs)
-        prefs = [self._to_preference(m) for m in results.get("results", results)]
-        logger.info(f"Search query={query} scope={scope} returned {len(prefs)} results")
-        return prefs
+        imprints = [self._to_imprint(m) for m in results.get("results", results)]
+        logger.info(f"Search query={query} scope={scope} returned {len(imprints)} results")
+        return imprints
 
     async def get_all(
         self,
         scope: str | None = None,
         repo: str | None = None,
         tags: list[str] | None = None,
-    ) -> list[Preference]:
+    ) -> list[Imprint]:
         all_memories: dict[str, Any] = await asyncio.to_thread(self._mem0.get_all, user_id=USER_ID)
         memories = all_memories.get("results", all_memories)
-        prefs = [self._to_preference(m) for m in memories]
+        imprints = [self._to_imprint(m) for m in memories]
         if scope:
-            prefs = [p for p in prefs if p.scope == scope]
+            imprints = [i for i in imprints if i.scope == scope]
         if repo is not None:
-            prefs = [p for p in prefs if p.repo == repo or p.repo is None]
+            imprints = [i for i in imprints if i.repo == repo or i.repo is None]
         if tags:
-            prefs = [p for p in prefs if any(t in p.tags for t in tags)]
-        return prefs
+            imprints = [i for i in imprints if any(t in i.tags for t in tags)]
+        return imprints
 
     async def update(
         self,
-        preference_id: str,
+        imprint_id: str,
         text: str | None = None,
         scope: str | None = None,
         repo: str | None = None,
         tags: list[str] | None = None,
-    ) -> Preference:
-        existing: dict[str, Any] | None = await asyncio.to_thread(self._mem0.get, preference_id)
+    ) -> Imprint:
+        existing: dict[str, Any] | None = await asyncio.to_thread(self._mem0.get, imprint_id)
         if not existing:
-            raise KeyError(f"Preference not found: {preference_id}")
+            raise KeyError(f"Imprint not found: {imprint_id}")
 
         current_metadata = existing.get("metadata", {})
         metadata_changed = False
@@ -135,25 +135,25 @@ class Mem0PreferenceStore:
             update_kwargs: dict[str, Any] = {"data": text or existing.get("memory", "")}
             if metadata_changed:
                 update_kwargs["metadata"] = current_metadata
-            await asyncio.to_thread(self._mem0.update, preference_id, **update_kwargs)
+            await asyncio.to_thread(self._mem0.update, imprint_id, **update_kwargs)
 
-        updated: dict[str, Any] | None = await asyncio.to_thread(self._mem0.get, preference_id)
-        logger.info(f"Updated preference {preference_id}")
-        return self._to_preference(updated or {})
+        updated: dict[str, Any] | None = await asyncio.to_thread(self._mem0.get, imprint_id)
+        logger.info(f"Updated imprint {imprint_id}")
+        return self._to_imprint(updated or {})
 
-    async def delete(self, preference_id: str) -> None:
-        await asyncio.to_thread(self._mem0.delete, preference_id)
-        logger.info(f"Deleted preference {preference_id}")
+    async def delete(self, imprint_id: str) -> None:
+        await asyncio.to_thread(self._mem0.delete, imprint_id)
+        logger.info(f"Deleted imprint {imprint_id}")
 
     async def get_scopes(self) -> list[str]:
-        all_prefs = await self.get_all()
-        return sorted({p.scope for p in all_prefs})
+        all_imprints = await self.get_all()
+        return sorted({i.scope for i in all_imprints})
 
     async def get_tags(self) -> list[str]:
-        all_prefs = await self.get_all()
+        all_imprints = await self.get_all()
         tags: set[str] = set()
-        for p in all_prefs:
-            tags.update(p.tags)
+        for i in all_imprints:
+            tags.update(i.tags)
         return sorted(tags)
 
     # --- Private helpers ---
@@ -172,8 +172,6 @@ class Mem0PreferenceStore:
             case BedrockLLMConfig(model=model, aws_auth=None):
                 return {"model": model}
             case BedrockLLMConfig(model=model, aws_auth=ProfileAuth(profile=p, region=r)):
-                # Mem0 passes profile_name to boto3.client() which doesn't
-                # accept it — set env var so boto3's chain picks it up.
                 os.environ["AWS_PROFILE"] = p
                 return {"model": model, "aws_region": r} if r else {"model": model}
             case BedrockLLMConfig(
@@ -206,13 +204,13 @@ class Mem0PreferenceStore:
             case _:
                 return ""
 
-    async def _get_by_id(self, memory_id: str, fallback: PreferenceCreate) -> Preference:
+    async def _get_by_id(self, memory_id: str, fallback: ImprintCreate) -> Imprint:
         if memory_id:
             try:
                 return await self.get(memory_id)
             except (KeyError, Exception):
                 logger.warning(f"Could not fetch memory {memory_id}, using fallback")
-        return Preference(
+        return Imprint(
             id=memory_id or "unknown",
             text=fallback.text,
             scope=fallback.scope,
@@ -222,9 +220,9 @@ class Mem0PreferenceStore:
         )
 
     @staticmethod
-    def _to_preference(memory: dict[str, Any]) -> Preference:
+    def _to_imprint(memory: dict[str, Any]) -> Imprint:
         metadata = memory.get("metadata") or {}
-        return Preference(
+        return Imprint(
             id=memory.get("id", memory.get("memory_id", "")),
             text=memory.get("memory", ""),
             scope=metadata.get("scope", "global"),

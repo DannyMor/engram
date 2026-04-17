@@ -6,12 +6,12 @@ from httpx import ASGITransport, AsyncClient
 from engram.api.app import create_api
 from engram.core.models import EngramConfig
 from engram.llm.base import StopEvent, TextDelta
-from engram.storage.memory import InMemoryPreferenceStore
+from engram.storage.memory import InMemoryImprintStore
 from tests.fakes import FakeLLMClient
 
 
 async def test_chat_streams_response() -> None:
-    store = InMemoryPreferenceStore()
+    store = InMemoryImprintStore()
     fake_llm = FakeLLMClient(
         responses=[
             [TextDelta(text="Hello!"), StopEvent(reason="end_turn")],

@@ -1,47 +1,47 @@
-"""In-memory preference store — dict-backed, no external dependencies."""
+"""In-memory imprint store — dict-backed, no external dependencies."""
 
 import uuid
 from datetime import UTC, datetime
 
-from engram.core.models import Confidence, Preference, PreferenceCreate
+from engram.core.models import Confidence, Imprint, ImprintCreate
 
 
-class InMemoryPreferenceStore:
-    """Dict-backed PreferenceStore for testing and embedding-free mode."""
+class InMemoryImprintStore:
+    """Dict-backed ImprintStore for testing and embedding-free mode."""
 
     def __init__(self) -> None:
-        self._prefs: dict[str, Preference] = {}
+        self._imprints: dict[str, Imprint] = {}
 
-    async def add(self, pref: PreferenceCreate) -> Preference:
-        preference = Preference(
+    async def add(self, imprint: ImprintCreate) -> Imprint:
+        created = Imprint(
             id=str(uuid.uuid4()),
-            text=pref.text,
-            scope=pref.scope,
-            repo=pref.repo,
-            tags=pref.tags,
-            source=pref.source,
+            text=imprint.text,
+            scope=imprint.scope,
+            repo=imprint.repo,
+            tags=imprint.tags,
+            source=imprint.source,
             confidence=Confidence.HIGH,
             created_at=datetime.now(UTC),
             updated_at=datetime.now(UTC),
         )
-        self._prefs[preference.id] = preference
-        return preference
+        self._imprints[created.id] = created
+        return created
 
-    async def get(self, preference_id: str) -> Preference:
+    async def get(self, imprint_id: str) -> Imprint:
         try:
-            return self._prefs[preference_id]
+            return self._imprints[imprint_id]
         except KeyError as err:
-            raise KeyError(f"Preference not found: {preference_id}") from err
+            raise KeyError(f"Imprint not found: {imprint_id}") from err
 
     async def search(
         self, query: str, scope: str | None = None, repo: str | None = None
-    ) -> list[Preference]:
+    ) -> list[Imprint]:
         query_lower = query.lower()
-        results = [p for p in self._prefs.values() if query_lower in p.text.lower()]
+        results = [i for i in self._imprints.values() if query_lower in i.text.lower()]
         if scope:
-            results = [p for p in results if p.scope == scope]
+            results = [i for i in results if i.scope == scope]
         if repo is not None:
-            results = [p for p in results if p.repo == repo or p.repo is None]
+            results = [i for i in results if i.repo == repo or i.repo is None]
         return results
 
     async def get_all(
@@ -49,25 +49,25 @@ class InMemoryPreferenceStore:
         scope: str | None = None,
         repo: str | None = None,
         tags: list[str] | None = None,
-    ) -> list[Preference]:
-        results = list(self._prefs.values())
+    ) -> list[Imprint]:
+        results = list(self._imprints.values())
         if scope:
-            results = [p for p in results if p.scope == scope]
+            results = [i for i in results if i.scope == scope]
         if repo is not None:
-            results = [p for p in results if p.repo == repo or p.repo is None]
+            results = [i for i in results if i.repo == repo or i.repo is None]
         if tags:
-            results = [p for p in results if any(t in p.tags for t in tags)]
+            results = [i for i in results if any(t in i.tags for t in tags)]
         return results
 
     async def update(
         self,
-        preference_id: str,
+        imprint_id: str,
         text: str | None = None,
         scope: str | None = None,
         repo: str | None = None,
         tags: list[str] | None = None,
-    ) -> Preference:
-        existing = await self.get(preference_id)
+    ) -> Imprint:
+        existing = await self.get(imprint_id)
         updated = existing.model_copy(
             update={
                 k: v
@@ -76,19 +76,19 @@ class InMemoryPreferenceStore:
             }
             | {"updated_at": datetime.now(UTC)},
         )
-        self._prefs[preference_id] = updated
+        self._imprints[imprint_id] = updated
         return updated
 
-    async def delete(self, preference_id: str) -> None:
-        if preference_id not in self._prefs:
-            raise KeyError(f"Preference not found: {preference_id}")
-        del self._prefs[preference_id]
+    async def delete(self, imprint_id: str) -> None:
+        if imprint_id not in self._imprints:
+            raise KeyError(f"Imprint not found: {imprint_id}")
+        del self._imprints[imprint_id]
 
     async def get_scopes(self) -> list[str]:
-        return sorted({p.scope for p in self._prefs.values()})
+        return sorted({i.scope for i in self._imprints.values()})
 
     async def get_tags(self) -> list[str]:
         tags: set[str] = set()
-        for p in self._prefs.values():
-            tags.update(p.tags)
+        for i in self._imprints.values():
+            tags.update(i.tags)
         return sorted(tags)

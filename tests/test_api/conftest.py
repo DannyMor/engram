@@ -6,17 +6,17 @@ from httpx import ASGITransport, AsyncClient
 
 from engram.api.app import create_api
 from engram.core.models import EngramConfig
-from engram.storage.memory import InMemoryPreferenceStore
+from engram.storage.memory import InMemoryImprintStore
 from tests.fakes import FakeLLMClient
 
 
 @pytest.fixture
-def store() -> InMemoryPreferenceStore:
-    return InMemoryPreferenceStore()
+def store() -> InMemoryImprintStore:
+    return InMemoryImprintStore()
 
 
 @pytest.fixture
-def app(store: InMemoryPreferenceStore) -> FastAPI:
+def app(store: InMemoryImprintStore) -> FastAPI:
     app = FastAPI()
     app.state.store = store
     app.state.config = EngramConfig()

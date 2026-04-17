@@ -1,4 +1,4 @@
-"""Curation agent — LLM-powered preference management with typed tool dispatch."""
+"""Imprint collector agent — LLM-powered imprint management with typed tool dispatch."""
 
 import json
 import logging
@@ -7,15 +7,15 @@ from typing import Any
 
 from pydantic import TypeAdapter
 
-from engram.core.models import Preference, PreferenceCreate, Source
-from engram.curator.tools import (
-    AddPreferenceCommand,
-    DeletePreferenceCommand,
-    ListPreferencesCommand,
-    SearchPreferencesCommand,
+from engram.collector.tools import (
+    AddImprintCommand,
+    DeleteImprintCommand,
+    ListImprintsCommand,
+    SearchImprintsCommand,
     ToolCommand,
-    UpdatePreferenceCommand,
+    UpdateImprintCommand,
 )
+from engram.core.models import Imprint, ImprintCreate, Source
 from engram.llm.base import (
     LLMClient,
     Message,
@@ -25,25 +25,25 @@ from engram.llm.base import (
     ToolParameter,
     ToolUse,
 )
-from engram.storage.base import PreferenceStore
+from engram.storage.base import ImprintStore
 
 logger = logging.getLogger(__name__)
 
 _tool_command_adapter = TypeAdapter(ToolCommand)
 
 
-def build_system_prompt(prefs: list[Preference]) -> str:
-    """Build the system prompt for the curation agent."""
+def build_system_prompt(imprints: list[Imprint]) -> str:
+    """Build the system prompt for the imprint collector."""
     lines = [
-        "You are a coding preference curator. You help users manage their coding preferences.",
-        "You have tools to add, search, update, delete, and list preferences.",
+        "You are a coding imprint collector. You help users manage their coding imprints.",
+        "You have tools to add, search, update, delete, and list imprints.",
         "",
-        "Current preferences:",
+        "Current imprints:",
     ]
-    if prefs:
-        for p in prefs:
-            tags_str = f" [{', '.join(p.tags)}]" if p.tags else ""
-            lines.append(f"- [{p.scope}]{tags_str} {p.text} (id: {p.id})")
+    if imprints:
+        for i in imprints:
+            tags_str = f" [{', '.join(i.tags)}]" if i.tags else ""
+            lines.append(f"- [{i.scope}]{tags_str} {i.text} (id: {i.id})")
     else:
         lines.append("- (none)")
     return "\n".join(lines)
@@ -53,10 +53,10 @@ def build_tool_definitions() -> list[ToolDefinition]:
     """Build typed tool definitions for the LLM."""
     return [
         ToolDefinition(
-            name="add_preference",
-            description="Store a new coding preference.",
+            name="add_imprint",
+            description="Store a new coding imprint.",
             parameters=[
-                ToolParameter(name="text", type="string", description="The preference text"),
+                ToolParameter(name="text", type="string", description="The imprint text"),
                 ToolParameter(
                     name="scope",
                     type="string",
@@ -77,8 +77,8 @@ def build_tool_definitions() -> list[ToolDefinition]:
             ],
         ),
         ToolDefinition(
-            name="search_preferences",
-            description="Semantic search across preferences.",
+            name="search_imprints",
+            description="Semantic search across imprints.",
             parameters=[
                 ToolParameter(name="query", type="string", description="Search query"),
                 ToolParameter(
@@ -96,25 +96,25 @@ def build_tool_definitions() -> list[ToolDefinition]:
             ],
         ),
         ToolDefinition(
-            name="update_preference",
-            description="Update an existing preference.",
+            name="update_imprint",
+            description="Update an existing imprint.",
             parameters=[
-                ToolParameter(name="id", type="string", description="Preference ID to update"),
+                ToolParameter(name="id", type="string", description="Imprint ID to update"),
                 ToolParameter(name="text", type="string", description="New text", required=False),
                 ToolParameter(name="scope", type="string", description="New scope", required=False),
                 ToolParameter(name="tags", type="array", description="New tags", required=False),
             ],
         ),
         ToolDefinition(
-            name="delete_preference",
-            description="Permanently delete a preference.",
+            name="delete_imprint",
+            description="Permanently delete an imprint.",
             parameters=[
-                ToolParameter(name="id", type="string", description="Preference ID to delete"),
+                ToolParameter(name="id", type="string", description="Imprint ID to delete"),
             ],
         ),
         ToolDefinition(
-            name="list_preferences",
-            description="List all preferences, optionally filtered by scope.",
+            name="list_imprints",
+            description="List all imprints, optionally filtered by scope.",
             parameters=[
                 ToolParameter(
                     name="scope",
@@ -127,23 +127,23 @@ def build_tool_definitions() -> list[ToolDefinition]:
     ]
 
 
-class CurationAgent:
-    """Orchestrates LLM tool-use loop for preference curation."""
+class ImprintCollector:
+    """Orchestrates LLM tool-use loop for imprint collection."""
 
-    def __init__(self, llm: LLMClient, store: PreferenceStore) -> None:
+    def __init__(self, llm: LLMClient, store: ImprintStore) -> None:
         self._llm = llm
         self._store = store
 
     async def chat(self, message: str, history: list[Message] | None = None) -> AsyncGenerator[str]:
-        """Stream a curation response, executing tool calls as needed."""
+        """Stream a collector response, executing tool calls as needed."""
         try:
-            all_prefs = await self._store.get_all()
+            all_imprints = await self._store.get_all()
         except Exception:
-            logger.exception("Failed to load preferences")
-            yield "\n\nError: Could not load preferences."
+            logger.exception("Failed to load imprints")
+            yield "\n\nError: Could not load imprints."
             return
 
-        system = build_system_prompt(all_prefs)
+        system = build_system_prompt(all_imprints)
         tools = build_tool_definitions()
 
         messages: list[Message] = list(history or [])
@@ -214,21 +214,21 @@ class CurationAgent:
             return {"error": f"Invalid tool call: {e}"}
 
         match command:
-            case AddPreferenceCommand(text=text, scope=scope, repo=repo, tags=tags):
-                pref = PreferenceCreate(
-                    text=text, scope=scope, repo=repo, tags=tags, source=Source.CURATION_AGENT
+            case AddImprintCommand(text=text, scope=scope, repo=repo, tags=tags):
+                imprint = ImprintCreate(
+                    text=text, scope=scope, repo=repo, tags=tags, source=Source.COLLECTOR
                 )
-                result = await self._store.add(pref)
+                result = await self._store.add(imprint)
                 return result.model_dump(mode="json")
-            case SearchPreferencesCommand(query=query, scope=scope, repo=repo):
+            case SearchImprintsCommand(query=query, scope=scope, repo=repo):
                 results = await self._store.search(query, scope=scope, repo=repo)
                 return [r.model_dump(mode="json") for r in results]
-            case UpdatePreferenceCommand(id=preference_id, text=text, scope=scope, tags=tags):
-                result = await self._store.update(preference_id, text=text, scope=scope, tags=tags)
+            case UpdateImprintCommand(id=imprint_id, text=text, scope=scope, tags=tags):
+                result = await self._store.update(imprint_id, text=text, scope=scope, tags=tags)
                 return result.model_dump(mode="json")
-            case DeletePreferenceCommand(id=preference_id):
-                await self._store.delete(preference_id)
+            case DeleteImprintCommand(id=imprint_id):
+                await self._store.delete(imprint_id)
                 return None
-            case ListPreferencesCommand(scope=scope):
+            case ListImprintsCommand(scope=scope):
                 results = await self._store.get_all(scope=scope)
                 return [r.model_dump(mode="json") for r in results]

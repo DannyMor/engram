@@ -1,12 +1,12 @@
 [project]
 name = "engramd"
 version = "0.1.1"
-description = "Self-curating coding preference memory for Claude Code"
+description = "Self-consolidating coding imprint memory for Claude Code"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"
 authors = [{ name = "DannyMor" }]
-keywords = ["claude", "mcp", "preferences", "coding", "memory"]
+keywords = ["claude", "mcp", "imprints", "coding", "memory"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Programming Language :: Python :: 3.11",
