@@ -1,4 +1,4 @@
-"""MCP server — exposes preference tools for Claude Code."""
+"""MCP server — exposes imprint tools for Claude Code."""
 
 import asyncio
 import logging
@@ -6,116 +6,116 @@ from typing import Any
 
 from fastmcp import FastMCP
 
-from engram.core.models import PreferenceCreate, Source
-from engram.storage.base import PreferenceStore
+from engram.core.models import ImprintCreate, Source
+from engram.storage.base import ImprintStore
 
 logger = logging.getLogger(__name__)
 
 _background_tasks: set[asyncio.Task[None]] = set()
 
 INSTRUCTIONS = (
-    "Engram is the user's coding preference memory. When the user gives feedback "
+    "Engram is the user's coding imprint memory. When the user gives feedback "
     "about how code should be written — coding style, patterns to use or avoid, "
-    "testing approaches, naming conventions, architectural preferences — call "
-    'add_preference() to store it. Examples: "don\'t mock the database in tests", '
+    "testing approaches, naming conventions, architectural imprints — call "
+    'add_imprint() to store it. Examples: "don\'t mock the database in tests", '
     '"use frozen dataclasses", "prefer composition over inheritance". Do not store '
     "task-specific instructions or one-off corrections. "
-    "IMPORTANT: Storing preferences is passive background work — never let it block "
+    "IMPORTANT: Storing imprints is passive background work — never let it block "
     "or slow down the user's primary task. Call the tool and move on immediately. "
-    "At session start, preferences are already loaded into context via CLAUDE.md — "
-    "do not call get_preferences_for_context() yourself."
+    "At session start, imprints are already loaded into context via CLAUDE.md — "
+    "do not call get_imprints_for_context() yourself."
 )
 
 
-async def _store_with_logging(store: PreferenceStore, pref: PreferenceCreate) -> None:
-    """Background task for fire-and-forget preference storage."""
+async def _store_with_logging(store: ImprintStore, imprint: ImprintCreate) -> None:
+    """Background task for fire-and-forget imprint storage."""
     try:
-        await store.add(pref)
-        logger.info(f"Stored preference: scope={pref.scope} text={pref.text[:80]}")
+        await store.add(imprint)
+        logger.info(f"Stored imprint: scope={imprint.scope} text={imprint.text[:80]}")
     except Exception:
-        logger.exception(f"Failed to store preference: {pref.text[:80]}")
+        logger.exception(f"Failed to store imprint: {imprint.text[:80]}")
 
 
-def create_mcp(store: PreferenceStore) -> FastMCP:
-    """Create the MCP server with preference tools."""
+def create_mcp(store: ImprintStore) -> FastMCP:
+    """Create the MCP server with imprint tools."""
     mcp = FastMCP("engram", instructions=INSTRUCTIONS)
 
     @mcp.tool()
-    async def add_preference(
+    async def add_imprint(
         text: str,
         scope: str,
         repo: str | None = None,
         tags: list[str] | None = None,
     ) -> dict[str, str]:
-        """Store a coding preference. Called when the user gives feedback about coding style."""
-        pref = PreferenceCreate(
+        """Store a coding imprint. Called when the user gives feedback about coding style."""
+        imprint = ImprintCreate(
             text=text,
             scope=scope,
             repo=repo,
             tags=tags or [],
             source=Source.CODING_SESSION,
         )
-        task = asyncio.create_task(_store_with_logging(store, pref))
+        task = asyncio.create_task(_store_with_logging(store, imprint))
         _background_tasks.add(task)
         task.add_done_callback(_background_tasks.discard)
         return {"status": "accepted", "text": text, "scope": scope}
 
     @mcp.tool()
-    async def get_preferences_for_context(
+    async def get_imprints_for_context(
         languages: list[str] | None = None,
         repo: str | None = None,
     ) -> list[dict[str, Any]]:
-        """Get relevant preferences for the current session context."""
+        """Get relevant imprints for the current session context."""
         scopes = ["global"] + (languages or [])
-        all_prefs: list[dict[str, Any]] = []
+        all_imprints: list[dict[str, Any]] = []
         seen_ids: set[str] = set()
         for scope in scopes:
-            for p in await store.get_all(scope=scope, repo=repo):
-                if p.id not in seen_ids:
-                    all_prefs.append(p.model_dump(mode="json"))
-                    seen_ids.add(p.id)
-        logger.info(f"get_preferences_for_context: scopes={scopes} returned {len(all_prefs)}")
-        return all_prefs
+            for i in await store.get_all(scope=scope, repo=repo):
+                if i.id not in seen_ids:
+                    all_imprints.append(i.model_dump(mode="json"))
+                    seen_ids.add(i.id)
+        logger.info(f"get_imprints_for_context: scopes={scopes} returned {len(all_imprints)}")
+        return all_imprints
 
     @mcp.tool()
-    async def search_preferences(
+    async def search_imprints(
         query: str,
         scope: str | None = None,
         repo: str | None = None,
     ) -> list[dict[str, Any]]:
-        """Semantic search across all stored preferences."""
+        """Semantic search across all stored imprints."""
         results = await store.search(query, scope=scope, repo=repo)
-        logger.info(f"search_preferences: query={query} returned {len(results)}")
+        logger.info(f"search_imprints: query={query} returned {len(results)}")
         return [r.model_dump(mode="json") for r in results]
 
     @mcp.tool()
-    async def list_preferences(
+    async def list_imprints(
         scope: str | None = None,
         repo: str | None = None,
         tags: list[str] | None = None,
     ) -> list[dict[str, Any]]:
-        """List all stored preferences, optionally filtered."""
+        """List all stored imprints, optionally filtered."""
         results = await store.get_all(scope=scope, repo=repo, tags=tags)
         return [r.model_dump(mode="json") for r in results]
 
     @mcp.tool()
-    async def delete_preference(preference_id: str) -> dict[str, str]:
-        """Permanently delete a preference by ID."""
-        await store.delete(preference_id)
-        logger.info(f"delete_preference: id={preference_id}")
-        return {"deleted": preference_id}
+    async def delete_imprint(imprint_id: str) -> dict[str, str]:
+        """Permanently delete an imprint by ID."""
+        await store.delete(imprint_id)
+        logger.info(f"delete_imprint: id={imprint_id}")
+        return {"deleted": imprint_id}
 
     @mcp.tool()
-    async def update_preference(
-        preference_id: str,
+    async def update_imprint(
+        imprint_id: str,
         text: str | None = None,
         scope: str | None = None,
         repo: str | None = None,
         tags: list[str] | None = None,
     ) -> dict[str, Any]:
-        """Update an existing preference."""
-        result = await store.update(preference_id, text=text, scope=scope, repo=repo, tags=tags)
-        logger.info(f"update_preference: id={preference_id}")
+        """Update an existing imprint."""
+        result = await store.update(imprint_id, text=text, scope=scope, repo=repo, tags=tags)
+        logger.info(f"update_imprint: id={imprint_id}")
         return result.model_dump(mode="json")
 
     return mcp

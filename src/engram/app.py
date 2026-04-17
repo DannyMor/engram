@@ -11,7 +11,7 @@ from engram.core.models import AnthropicLLMConfig, BedrockLLMConfig, EngramConfi
 from engram.llm.anthropic import AnthropicLLMClient
 from engram.llm.bedrock import BedrockLLMClient
 from engram.mcp import create_mcp
-from engram.storage.mem0 import Mem0PreferenceStore
+from engram.storage.mem0 import Mem0ImprintStore
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ def create_llm_client(config: EngramConfig) -> AnthropicLLMClient | BedrockLLMCl
 
 def create_app(
     config: EngramConfig | None = None,
-    store: Mem0PreferenceStore | None = None,
+    store: Mem0ImprintStore | None = None,
 ) -> FastAPI:
     """Create and configure the full engram application."""
     if config is None:
@@ -38,7 +38,7 @@ def create_app(
         setup_logging(config.logging.level)
 
     if store is None:
-        store = Mem0PreferenceStore(config)
+        store = Mem0ImprintStore(config)
 
     # MCP (must init before FastAPI for lifespan)
     mcp = create_mcp(store)
