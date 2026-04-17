@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 
 class Source(StrEnum):
     CODING_SESSION = "coding-session"
-    CURATION_AGENT = "curation-agent"
+    COLLECTOR = "collector"
     MANUAL = "manual"
 
 
@@ -23,7 +23,7 @@ class Confidence(StrEnum):
 # --- Domain Models ---
 
 
-class Preference(BaseModel):
+class Imprint(BaseModel):
     id: str
     text: str
     scope: str
@@ -35,7 +35,7 @@ class Preference(BaseModel):
     updated_at: datetime | None = None
 
 
-class PreferenceCreate(BaseModel):
+class ImprintCreate(BaseModel):
     text: str
     scope: str
     repo: str | None = None
@@ -43,7 +43,7 @@ class PreferenceCreate(BaseModel):
     source: Source = Source.MANUAL
 
 
-class PreferenceUpdate(BaseModel):
+class ImprintUpdate(BaseModel):
     text: str | None = None
     scope: str | None = None
     repo: str | None = None
