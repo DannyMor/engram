@@ -4,10 +4,10 @@ from fastapi import Request
 
 from engram.core.models import EngramConfig
 from engram.llm.base import LLMClient
-from engram.storage.base import PreferenceStore
+from engram.storage.base import ImprintStore
 
 
-async def get_store(request: Request) -> PreferenceStore:
+async def get_store(request: Request) -> ImprintStore:
     return request.app.state.store
 
 
